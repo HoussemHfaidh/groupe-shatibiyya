@@ -60,6 +60,8 @@ async function localRequest(path, options = {}) {
 
 async function loadConfig() {
   try {
+    const previousStudent = elements.studentSelect.value;
+    const previousWeek = elements.weekSelect.value;
     const config = getFirebaseUrl()
       ? await firebaseRequest("config")
       : await localRequest("/api/config");
@@ -67,6 +69,12 @@ async function loadConfig() {
       throw new Error("Configuration absente.");
     }
     renderOptions(config);
+    if (config.students.includes(previousStudent)) {
+      elements.studentSelect.value = previousStudent;
+    }
+    if (config.weeks.some((week) => week.id === previousWeek)) {
+      elements.weekSelect.value = previousWeek;
+    }
     elements.result.textContent = "Portail prêt.";
   } catch (error) {
     elements.result.textContent =
@@ -132,3 +140,5 @@ async function submitResponse(event) {
 
 elements.form.addEventListener("submit", submitResponse);
 loadConfig();
+window.addEventListener("focus", loadConfig);
+setInterval(loadConfig, 30000);

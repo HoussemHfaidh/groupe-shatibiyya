@@ -157,6 +157,8 @@ async function loadConfigFromBackend() {
       state.weeks = config.weeks;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       render();
+    } else if (getFirebaseUrl()) {
+      await syncConfigNow();
     }
     updateBackendUi("Configuration chargée.");
   } catch (error) {
@@ -167,25 +169,27 @@ async function loadConfigFromBackend() {
 let syncTimer;
 function syncConfigToBackend() {
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(async () => {
-    try {
-      const config = { students: state.students, weeks: state.weeks };
-      if (getFirebaseUrl()) {
-        await firebaseRequest("config", {
-          method: "PUT",
-          body: JSON.stringify(config),
-        });
-      } else {
-        await localRequest("/api/config", {
-          method: "PUT",
-          body: JSON.stringify(config),
-        });
-      }
-      updateBackendUi("Configuration synchronisée.");
-    } catch {
-      updateBackendUi(getFirebaseUrl() ? "Synchronisation Firebase impossible." : "Mode navigateur local.");
+  syncTimer = setTimeout(syncConfigNow, 350);
+}
+
+async function syncConfigNow() {
+  try {
+    const config = { students: state.students, weeks: state.weeks };
+    if (getFirebaseUrl()) {
+      await firebaseRequest("config", {
+        method: "PUT",
+        body: JSON.stringify(config),
+      });
+    } else {
+      await localRequest("/api/config", {
+        method: "PUT",
+        body: JSON.stringify(config),
+      });
     }
-  }, 350);
+    updateBackendUi("Élèves et semaines synchronisés.");
+  } catch {
+    updateBackendUi(getFirebaseUrl() ? "Synchronisation Firebase impossible." : "Mode navigateur local.");
+  }
 }
 
 async function loadSubmissions() {
