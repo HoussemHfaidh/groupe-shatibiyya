@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Portail élève - Shaṭibiyya</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="student-page">
+    <main class="student-shell">
+      <section class="panel student-card">
+        <p class="eyebrow">الشاطبية - حرز الأماني</p>
+        <h1>Déclaration de mémorisation</h1>
+        <p class="subtitle">
+          Sélectionne ton nom, la semaine, puis envoie ton état. Les données
+          sont sauvegardées dans la base en ligne gratuite du professeur.
+        </p>
+
+        <form id="submissionForm" class="student-form">
+          <label class="field">
+            <span>Nom</span>
+            <select id="studentSelect" required></select>
+          </label>
+
+          <label class="field">
+            <span>Semaine</span>
+            <select id="studentWeekSelect" required></select>
+          </label>
+
+          <fieldset class="status-choice">
+            <legend>État</legend>
+            <label>
+              <input type="radio" name="status" value="done" required />
+              <span>J'ai récité cette semaine</span>
+            </label>
+            <label>
+              <input type="radio" name="status" value="makeup" required />
+              <span>Rattrapage</span>
+            </label>
+            <label>
+              <input type="radio" name="status" value="missed" required />
+              <span>Je n'ai pas récité</span>
+            </label>
+          </fieldset>
+
+          <label class="field">
+            <span>Note optionnelle</span>
+            <textarea id="studentNote" rows="3" placeholder="Exemple : j'ai récité à tel élève"></textarea>
+          </label>
+
+          <button class="primary" type="submit">Envoyer au professeur</button>
+        </form>
+
+        <div id="studentResult" class="result-box" aria-live="polite">
+          Chargement du portail...
+        </div>
+      </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="student.js"></script>
+  </body>
+</html>

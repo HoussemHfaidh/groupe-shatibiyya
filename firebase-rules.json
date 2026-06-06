@@ -1,0 +1,13 @@
+{
+  "rules": {
+    "config": {
+      ".read": true,
+      ".write": true
+    },
+    "submissions": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["weekId"]
+    }
+  }
+}
