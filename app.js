@@ -93,6 +93,7 @@ const elements = {
   syncStatus: document.querySelector("#syncStatus"),
   submissionList: document.querySelector("#submissionList"),
   noReplyList: document.querySelector("#noReplyList"),
+  tableScroll: document.querySelector("#tableScroll"),
   chatInput: document.querySelector("#chatInput"),
   analyzeBtn: document.querySelector("#analyzeBtn"),
   clearChatBtn: document.querySelector("#clearChatBtn"),
@@ -527,40 +528,53 @@ function renderWeekSelect(selectedWeekId) {
 function renderTable() {
   const table = elements.trackingTable;
   table.innerHTML = "";
+  const selectedWeekId = elements.weekSelect.value;
+  table.style.setProperty("--week-count", state.weeks.length);
 
   const percentRow = document.createElement("tr");
   percentRow.className = "week-percent-row";
-  percentRow.append(emptyCell("th", ""));
-  percentRow.append(emptyCell("th", ""));
-  percentRow.append(emptyCell("th", ""));
+  percentRow.append(emptyCell("th", "", "sticky-col index-col"));
+  percentRow.append(emptyCell("th", "", "sticky-col name-col"));
+  percentRow.append(emptyCell("th", "", "sticky-col completion-col"));
   percentRow.append(emptyCell("th", ""));
   state.weeks.forEach((week) => {
     const cell = emptyCell("td", `${weekCompletion(week.id)}%`);
-    cell.className = "week-col";
+    cell.className = `week-col${week.id === selectedWeekId ? " selected-week" : ""}`;
+    cell.dataset.weekId = week.id;
     percentRow.append(cell);
   });
   table.append(percentRow);
 
   const header = document.createElement("tr");
-  header.append(headerCell("الرقم", "index-col"));
-  header.append(headerCell("الاسم", "name-col"));
-  header.append(headerCell("نسبة التسميع", "percent-col"));
+  header.className = "table-header-row";
+  header.append(headerCell("الرقم", "sticky-col index-col"));
+  header.append(headerCell("الاسم", "sticky-col name-col"));
+  header.append(headerCell("نسبة التسميع", "sticky-col completion-col"));
   header.append(headerCell("نسبة عدم التسميع", "percent-col"));
   state.weeks.forEach((week) => {
-    header.append(headerCell(`${weekLabel(week)}\n${formatDate(week.date)}`, "week-col"));
+    const cell = headerCell(`${weekLabel(week)}\n${formatDate(week.date)}`, "week-col");
+    if (week.id === selectedWeekId) {
+      cell.classList.add("selected-week");
+    }
+    cell.dataset.weekId = week.id;
+    header.append(cell);
   });
   table.append(header);
 
   state.students.forEach((student, index) => {
     const row = document.createElement("tr");
-    row.append(emptyCell("td", String(index + 1), "index-col"));
-    row.append(emptyCell("td", student, "name-col"));
-    row.append(emptyCell("td", `${studentCompletion(student)}%`, "percent-col"));
+    row.append(emptyCell("td", String(index + 1), "sticky-col index-col"));
+    row.append(emptyCell("td", student, "sticky-col name-col"));
+    row.append(emptyCell("td", `${studentCompletion(student)}%`, "sticky-col completion-col"));
     row.append(emptyCell("td", `${studentMissing(student)}%`, "percent-col"));
 
     state.weeks.forEach((week) => {
       const status = getStatus(student, week.id);
       const cell = emptyCell("td", "", `week-col status-${status || "empty"}`);
+      if (week.id === selectedWeekId) {
+        cell.classList.add("selected-week");
+      }
+      cell.dataset.weekId = week.id;
       const button = document.createElement("button");
       button.type = "button";
       button.className = "cell-button";
@@ -575,12 +589,23 @@ function renderTable() {
   });
 
   const totalRow = document.createElement("tr");
-  totalRow.append(emptyCell("td", "", "index-col"));
-  totalRow.append(emptyCell("td", "المجموعة", "name-col"));
-  totalRow.append(emptyCell("td", `${averageCompletion()}%`, "percent-col"));
+  totalRow.append(emptyCell("td", "", "sticky-col index-col"));
+  totalRow.append(emptyCell("td", "المجموعة", "sticky-col name-col"));
+  totalRow.append(emptyCell("td", `${averageCompletion()}%`, "sticky-col completion-col"));
   totalRow.append(emptyCell("td", `${averageMissing()}%`, "percent-col"));
   state.weeks.forEach(() => totalRow.append(emptyCell("td", "", "week-col")));
   table.append(totalRow);
+}
+
+function scrollToSelectedWeek() {
+  if (!elements.tableScroll || !elements.weekSelect.value) return;
+  const selectedCell = elements.trackingTable.querySelector(
+    `[data-week-id="${elements.weekSelect.value}"]`
+  );
+  if (!selectedCell) return;
+  requestAnimationFrame(() => {
+    selectedCell.scrollIntoView({ block: "nearest", inline: "nearest" });
+  });
 }
 
 function renderStudentList() {
@@ -754,6 +779,7 @@ function render(selectedWeekId) {
   renderSubmissions();
   renderReportDate();
   updateBackendUi();
+  scrollToSelectedWeek();
 }
 
 function sortWeeks() {
@@ -1353,6 +1379,8 @@ elements.nextWeekBtn.addEventListener("click", createNextWeek);
 elements.weekSelect.addEventListener("change", () => {
   renderChain();
   loadSubmissions();
+  renderTable();
+  scrollToSelectedWeek();
 });
 elements.exportImageBtn.addEventListener("click", () => exportImage(false));
 elements.exportCsvBtn.addEventListener("click", exportCsv);

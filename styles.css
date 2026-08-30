@@ -404,16 +404,19 @@ textarea {
 
 .table-scroll {
   overflow: auto;
+  position: relative;
+  scroll-behavior: smooth;
 }
 
 .tracking-table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   direction: rtl;
   font-family: Arial, "Noto Naskh Arabic", "Geeza Pro", sans-serif;
   font-size: 13px;
-  min-width: 1120px;
+  min-width: calc(388px + (var(--week-count, 9) * 92px));
   table-layout: fixed;
-  width: 100%;
+  width: calc(388px + (var(--week-count, 9) * 92px));
 }
 
 .tracking-table th,
@@ -431,27 +434,75 @@ textarea {
   font-weight: 800;
 }
 
+.tracking-table .table-header-row th {
+  height: 56px;
+  line-height: 1.2;
+}
+
 .tracking-table .week-percent-row td {
   background: #fff;
   font-weight: 800;
 }
 
+.tracking-table .selected-week {
+  box-shadow: inset 0 0 0 2px rgba(47, 103, 216, 0.35);
+}
+
 .tracking-table .name-col {
+  overflow: hidden;
   min-width: 150px;
   text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   width: 150px;
 }
 
 .tracking-table .index-col {
+  min-width: 42px;
   width: 42px;
 }
 
 .tracking-table .percent-col {
+  min-width: 98px;
+  width: 98px;
+}
+
+.tracking-table .completion-col {
+  min-width: 98px;
   width: 98px;
 }
 
 .tracking-table .week-col {
+  min-width: 92px;
   width: 92px;
+}
+
+.tracking-table .sticky-col {
+  background: #fff;
+  position: sticky;
+  z-index: 3;
+}
+
+.tracking-table th.sticky-col {
+  background: var(--header);
+  z-index: 5;
+}
+
+.tracking-table .week-percent-row .sticky-col {
+  background: #fff;
+  z-index: 4;
+}
+
+.tracking-table .index-col.sticky-col {
+  right: 0;
+}
+
+.tracking-table .name-col.sticky-col {
+  right: 42px;
+}
+
+.tracking-table .completion-col.sticky-col {
+  right: 192px;
 }
 
 .tracking-table button.cell-button {
