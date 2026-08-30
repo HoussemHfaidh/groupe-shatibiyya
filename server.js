@@ -37,7 +37,50 @@ const defaultWeeks = [
   { id: "2026-05-09-991-1010", start: 991, end: 1010, date: "2026-05-09" },
   { id: "2026-05-16-1001-1020", start: 1001, end: 1020, date: "2026-05-16" },
   { id: "2026-05-23-1011-1030", start: 1011, end: 1030, date: "2026-05-23" },
+  { id: "2026-05-30-1021-1040", start: 1021, end: 1040, date: "2026-05-30" },
+  { id: "2026-06-06-1031-1050", start: 1031, end: 1050, date: "2026-06-06" },
+  { id: "2026-06-13-1041-1060", start: 1041, end: 1060, date: "2026-06-13" },
+  { id: "2026-06-20-1051-1070", start: 1051, end: 1070, date: "2026-06-20" },
+  { id: "2026-09-05-1061-1080", start: 1061, end: 1080, date: "2026-09-05" },
 ];
+
+const recoveredStatusWeekIds = [
+  "2026-04-25-971-990",
+  "2026-05-02-981-1000",
+  "2026-05-09-991-1010",
+  "2026-05-16-1001-1020",
+  "2026-05-23-1011-1030",
+  "2026-05-30-1021-1040",
+  "2026-06-06-1031-1050",
+  "2026-06-13-1041-1060",
+  "2026-06-20-1051-1070",
+];
+
+const recoveredMissedStatuses = {
+  "أسماء شلبي": ["2026-06-06-1031-1050", "2026-06-20-1051-1070"],
+  "أسماء قرشاش": ["2026-06-20-1051-1070"],
+  "آمنة الله علي": [
+    "2026-05-16-1001-1020",
+    "2026-05-23-1011-1030",
+    "2026-05-30-1021-1040",
+    "2026-06-06-1031-1050",
+    "2026-06-13-1041-1060",
+    "2026-06-20-1051-1070",
+  ],
+  "محمد الصادق الكشباط": ["2026-05-02-981-1000"],
+  "مصطفى أحمدي": ["2026-05-16-1001-1020", "2026-06-20-1051-1070"],
+  "ياسين بن عمار": ["2026-06-20-1051-1070"],
+  "فارس المسعدي": ["2026-05-02-981-1000", "2026-06-13-1041-1060"],
+};
+
+const recoveredMakeupStatuses = {
+  "أسماء شلبي": ["2026-05-09-991-1010", "2026-05-23-1011-1030", "2026-05-30-1021-1040"],
+  "أسماء قرشاش": ["2026-05-23-1011-1030"],
+  "آمنة الله علي": ["2026-04-25-971-990", "2026-05-02-981-1000", "2026-05-09-991-1010"],
+  "محمد الصادق الكشباط": ["2026-05-23-1011-1030"],
+  "مصطفى أحمدي": ["2026-06-13-1041-1060"],
+  "حمزة الوزتي": ["2026-05-02-981-1000"],
+};
 
 const mimeTypes = {
   ".html": "text/html;charset=utf-8",
@@ -53,6 +96,11 @@ const mimeTypes = {
 let store = {
   students: defaultStudents,
   weeks: defaultWeeks,
+  settings: {
+    weekBoundaryDay: 6,
+  },
+  statuses: buildRecoveredStatuses(),
+  readyOrder: buildRecoveredReadyOrder(),
   submissions: [],
 };
 
@@ -62,7 +110,14 @@ async function loadStore() {
     const parsed = JSON.parse(raw);
     store = {
       students: parsed.students?.length ? parsed.students : defaultStudents,
-      weeks: parsed.weeks?.length ? parsed.weeks : defaultWeeks,
+      weeks: mergeWeeks(parsed.weeks?.length ? parsed.weeks : defaultWeeks),
+      settings: normalizeSettings(parsed.settings),
+      statuses: parsed.statuses && Object.keys(parsed.statuses).length
+        ? { ...buildRecoveredStatuses(), ...parsed.statuses }
+        : buildRecoveredStatuses(),
+      readyOrder: parsed.readyOrder && Object.keys(parsed.readyOrder).length
+        ? { ...buildRecoveredReadyOrder(), ...parsed.readyOrder }
+        : buildRecoveredReadyOrder(),
       submissions: Array.isArray(parsed.submissions) ? parsed.submissions : [],
     };
   } catch (error) {
@@ -71,6 +126,78 @@ async function loadStore() {
     }
     await saveStore();
   }
+}
+
+function normalizeArabic(value) {
+  return value
+    .toString()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u064b-\u065f\u0670]/g, "")
+    .replace(/[إأآا]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+function studentId(name) {
+  return normalizeArabic(name).replace(/\s+/g, "-");
+}
+
+function statusKey(studentName, weekId) {
+  return `${studentId(studentName)}__${weekId}`;
+}
+
+function buildRecoveredStatuses() {
+  const statuses = {};
+  defaultStudents.forEach((student) => {
+    recoveredStatusWeekIds.forEach((weekId) => {
+      let status = "done";
+      if ((recoveredMissedStatuses[student] || []).includes(weekId)) {
+        status = "missed";
+      }
+      if ((recoveredMakeupStatuses[student] || []).includes(weekId)) {
+        status = "makeup";
+      }
+      statuses[statusKey(student, weekId)] = status;
+    });
+  });
+  return statuses;
+}
+
+function buildRecoveredReadyOrder() {
+  const statuses = buildRecoveredStatuses();
+  return recoveredStatusWeekIds.reduce((orders, weekId) => {
+    orders[weekId] = defaultStudents.filter((student) => {
+      const status = statuses[statusKey(student, weekId)];
+      return status === "done" || status === "makeup";
+    });
+    return orders;
+  }, {});
+}
+
+function normalizeSettings(settings = {}) {
+  const weekBoundaryDay = Number(settings.weekBoundaryDay);
+  return {
+    weekBoundaryDay: Number.isInteger(weekBoundaryDay) && weekBoundaryDay >= 0 && weekBoundaryDay <= 6
+      ? weekBoundaryDay
+      : 6,
+  };
+}
+
+function mergeWeeks(weeks = []) {
+  const byId = new Map();
+  [...weeks, ...defaultWeeks].forEach((week) => {
+    if (!week?.id) return;
+    byId.set(week.id, {
+      id: String(week.id),
+      start: Number(week.start),
+      end: Number(week.end),
+      date: String(week.date),
+    });
+  });
+  return [...byId.values()].filter((week) => week.start && week.end && week.date);
 }
 
 async function saveStore() {
@@ -116,6 +243,9 @@ async function handleApi(request, response, url) {
     sendJson(response, 200, {
       students: store.students,
       weeks: store.weeks,
+      settings: store.settings,
+      statuses: store.statuses,
+      readyOrder: store.readyOrder,
     });
     return;
   }
@@ -127,6 +257,13 @@ async function handleApi(request, response, url) {
       return;
     }
     store.students = body.students.map(String).filter(Boolean);
+    store.settings = normalizeSettings(body.settings);
+    store.statuses = body.statuses && typeof body.statuses === "object"
+      ? { ...buildRecoveredStatuses(), ...body.statuses }
+      : buildRecoveredStatuses();
+    store.readyOrder = body.readyOrder && typeof body.readyOrder === "object"
+      ? { ...buildRecoveredReadyOrder(), ...body.readyOrder }
+      : buildRecoveredReadyOrder();
     store.weeks = body.weeks
       .map((week) => ({
         id: String(week.id || ""),
@@ -135,6 +272,7 @@ async function handleApi(request, response, url) {
         date: String(week.date || ""),
       }))
       .filter((week) => week.id && week.start && week.end && week.date);
+    store.weeks = mergeWeeks(store.weeks);
     await saveStore();
     sendJson(response, 200, { ok: true });
     return;
@@ -189,6 +327,13 @@ async function handleApi(request, response, url) {
     }
     submission.applied = true;
     submission.appliedAt = new Date().toISOString();
+    const body = await readBody(request);
+    if (typeof body.late === "boolean") {
+      submission.late = body.late;
+    }
+    if (["done", "makeup", "missed"].includes(body.appliedStatus)) {
+      submission.appliedStatus = body.appliedStatus;
+    }
     await saveStore();
     sendJson(response, 200, { ok: true, submission });
     return;

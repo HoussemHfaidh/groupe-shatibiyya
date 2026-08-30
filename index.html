@@ -108,6 +108,19 @@
 
         <div id="studentList" class="student-list" aria-label="Liste des élèves"></div>
 
+        <label class="field">
+          <span>Début/fin de semaine</span>
+          <select id="weekBoundaryDay">
+            <option value="6">Samedi à samedi</option>
+            <option value="0">Dimanche à dimanche</option>
+            <option value="1">Lundi à lundi</option>
+            <option value="2">Mardi à mardi</option>
+            <option value="3">Mercredi à mercredi</option>
+            <option value="4">Jeudi à jeudi</option>
+            <option value="5">Vendredi à vendredi</option>
+          </select>
+        </label>
+
         <form id="weekForm" class="week-form">
           <label class="field">
             <span>Début</span>
@@ -124,9 +137,13 @@
           <button type="submit" class="secondary">Ajouter semaine</button>
         </form>
 
+        <div class="button-row week-actions">
+          <button id="nextWeekBtn" type="button" class="secondary">Créer semaine suivante</button>
+        </div>
+
         <div class="legend" aria-label="Légende">
           <span><i class="swatch done"></i> Fait à temps</span>
-          <span><i class="swatch makeup"></i> Rattrapage</span>
+          <span><i class="swatch makeup"></i> Rattrapage / retard</span>
           <span><i class="swatch missed"></i> Non fait</span>
           <span><i class="swatch empty"></i> Non renseigné</span>
         </div>
@@ -180,6 +197,6 @@
     </template>
 
     <script src="config.js?v=20260606-firebase-default"></script>
-    <script src="app.js?v=20260606-firebase-default"></script>
+    <script src="app.js?v=20260830-late-settings"></script>
   </body>
 </html>

@@ -215,6 +215,10 @@ textarea {
   grid-template-columns: 1fr 1fr 1.2fr auto;
 }
 
+.week-actions {
+  margin: -2px 0 14px;
+}
+
 .student-list {
   display: flex;
   flex-wrap: wrap;

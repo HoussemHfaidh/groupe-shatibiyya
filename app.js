@@ -31,7 +31,54 @@ const defaultWeeks = [
   { id: "2026-05-09-991-1010", start: 991, end: 1010, date: "2026-05-09" },
   { id: "2026-05-16-1001-1020", start: 1001, end: 1020, date: "2026-05-16" },
   { id: "2026-05-23-1011-1030", start: 1011, end: 1030, date: "2026-05-23" },
+  { id: "2026-05-30-1021-1040", start: 1021, end: 1040, date: "2026-05-30" },
+  { id: "2026-06-06-1031-1050", start: 1031, end: 1050, date: "2026-06-06" },
+  { id: "2026-06-13-1041-1060", start: 1041, end: 1060, date: "2026-06-13" },
+  { id: "2026-06-20-1051-1070", start: 1051, end: 1070, date: "2026-06-20" },
+  { id: "2026-09-05-1061-1080", start: 1061, end: 1080, date: "2026-09-05" },
 ];
+
+const defaultSettings = {
+  weekBoundaryDay: 6,
+};
+
+const recoveredStatusWeekIds = [
+  "2026-04-25-971-990",
+  "2026-05-02-981-1000",
+  "2026-05-09-991-1010",
+  "2026-05-16-1001-1020",
+  "2026-05-23-1011-1030",
+  "2026-05-30-1021-1040",
+  "2026-06-06-1031-1050",
+  "2026-06-13-1041-1060",
+  "2026-06-20-1051-1070",
+];
+
+const recoveredMissedStatuses = {
+  "أسماء شلبي": ["2026-06-06-1031-1050", "2026-06-20-1051-1070"],
+  "أسماء قرشاش": ["2026-06-20-1051-1070"],
+  "آمنة الله علي": [
+    "2026-05-16-1001-1020",
+    "2026-05-23-1011-1030",
+    "2026-05-30-1021-1040",
+    "2026-06-06-1031-1050",
+    "2026-06-13-1041-1060",
+    "2026-06-20-1051-1070",
+  ],
+  "محمد الصادق الكشباط": ["2026-05-02-981-1000"],
+  "مصطفى أحمدي": ["2026-05-16-1001-1020", "2026-06-20-1051-1070"],
+  "ياسين بن عمار": ["2026-06-20-1051-1070"],
+  "فارس المسعدي": ["2026-05-02-981-1000", "2026-06-13-1041-1060"],
+};
+
+const recoveredMakeupStatuses = {
+  "أسماء شلبي": ["2026-05-09-991-1010", "2026-05-23-1011-1030", "2026-05-30-1021-1040"],
+  "أسماء قرشاش": ["2026-05-23-1011-1030"],
+  "آمنة الله علي": ["2026-04-25-971-990", "2026-05-02-981-1000", "2026-05-09-991-1010"],
+  "محمد الصادق الكشباط": ["2026-05-23-1011-1030"],
+  "مصطفى أحمدي": ["2026-06-13-1041-1060"],
+  "حمزة الوزتي": ["2026-05-02-981-1000"],
+};
 
 const state = loadState();
 
@@ -53,7 +100,9 @@ const elements = {
   studentForm: document.querySelector("#studentForm"),
   studentName: document.querySelector("#studentName"),
   studentList: document.querySelector("#studentList"),
+  weekBoundaryDay: document.querySelector("#weekBoundaryDay"),
   weekForm: document.querySelector("#weekForm"),
+  nextWeekBtn: document.querySelector("#nextWeekBtn"),
   lineStart: document.querySelector("#lineStart"),
   lineEnd: document.querySelector("#lineEnd"),
   weekDate: document.querySelector("#weekDate"),
@@ -74,9 +123,10 @@ function loadState() {
       const parsed = JSON.parse(saved);
       return {
         students: parsed.students?.length ? parsed.students : defaultStudents,
-        weeks: parsed.weeks?.length ? parsed.weeks : defaultWeeks,
-        statuses: parsed.statuses || {},
-        readyOrder: parsed.readyOrder || {},
+        weeks: mergeWeeks(parsed.weeks?.length ? parsed.weeks : defaultWeeks),
+        settings: normalizeSettings(parsed.settings),
+        statuses: { ...buildRecoveredStatuses(), ...(parsed.statuses || {}) },
+        readyOrder: parsed.readyOrder || buildRecoveredReadyOrder(),
         submissions: parsed.submissions || [],
       };
     } catch {
@@ -86,11 +136,35 @@ function loadState() {
 
   return {
     students: defaultStudents,
-    weeks: defaultWeeks,
-    statuses: {},
-    readyOrder: {},
+    weeks: mergeWeeks(defaultWeeks),
+    settings: { ...defaultSettings },
+    statuses: buildRecoveredStatuses(),
+    readyOrder: buildRecoveredReadyOrder(),
     submissions: [],
   };
+}
+
+function normalizeSettings(settings = {}) {
+  const weekBoundaryDay = Number(settings.weekBoundaryDay);
+  return {
+    weekBoundaryDay: Number.isInteger(weekBoundaryDay) && weekBoundaryDay >= 0 && weekBoundaryDay <= 6
+      ? weekBoundaryDay
+      : defaultSettings.weekBoundaryDay,
+  };
+}
+
+function mergeWeeks(weeks = []) {
+  const byId = new Map();
+  [...weeks, ...defaultWeeks].forEach((week) => {
+    if (!week?.id) return;
+    byId.set(week.id, {
+      id: String(week.id),
+      start: Number(week.start),
+      end: Number(week.end),
+      date: String(week.date),
+    });
+  });
+  return [...byId.values()].filter((week) => week.start && week.end && week.date);
 }
 
 function saveState() {
@@ -154,7 +228,14 @@ async function loadConfigFromBackend() {
     }
     if (config?.students?.length && config?.weeks?.length) {
       state.students = config.students;
-      state.weeks = config.weeks;
+      state.weeks = mergeWeeks(config.weeks);
+      state.settings = normalizeSettings(config.settings);
+      if (config.statuses && Object.keys(config.statuses).length) {
+        state.statuses = { ...buildRecoveredStatuses(), ...config.statuses };
+      }
+      if (config.readyOrder && Object.keys(config.readyOrder).length) {
+        state.readyOrder = { ...buildRecoveredReadyOrder(), ...config.readyOrder };
+      }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       render();
     } else if (getFirebaseUrl()) {
@@ -174,7 +255,13 @@ function syncConfigToBackend() {
 
 async function syncConfigNow() {
   try {
-    const config = { students: state.students, weeks: state.weeks };
+    const config = {
+      students: state.students,
+      weeks: state.weeks,
+      settings: state.settings,
+      statuses: state.statuses,
+      readyOrder: state.readyOrder,
+    };
     if (getFirebaseUrl()) {
       await firebaseRequest("config", {
         method: "PUT",
@@ -213,17 +300,21 @@ async function loadSubmissions() {
   }
 }
 
-async function markSubmissionApplied(submissionId) {
+async function markSubmissionApplied(submissionId, metadata = {}) {
   if (getFirebaseUrl()) {
     await firebaseRequest(`submissions/${submissionId}`, {
       method: "PATCH",
       body: JSON.stringify({
         applied: true,
         appliedAt: new Date().toISOString(),
+        ...metadata,
       }),
     });
   } else {
-    await localRequest(`/api/submissions/${submissionId}/apply`, { method: "PATCH" });
+    await localRequest(`/api/submissions/${submissionId}/apply`, {
+      method: "PATCH",
+      body: JSON.stringify(metadata),
+    });
   }
 }
 
@@ -267,6 +358,34 @@ function studentId(name) {
   return normalizeArabic(name).replace(/\s+/g, "-");
 }
 
+function buildRecoveredStatuses() {
+  const statuses = {};
+  defaultStudents.forEach((student) => {
+    recoveredStatusWeekIds.forEach((weekId) => {
+      let status = "done";
+      if ((recoveredMissedStatuses[student] || []).includes(weekId)) {
+        status = "missed";
+      }
+      if ((recoveredMakeupStatuses[student] || []).includes(weekId)) {
+        status = "makeup";
+      }
+      statuses[statusKey(student, weekId)] = status;
+    });
+  });
+  return statuses;
+}
+
+function buildRecoveredReadyOrder() {
+  const statuses = buildRecoveredStatuses();
+  return recoveredStatusWeekIds.reduce((orders, weekId) => {
+    orders[weekId] = defaultStudents.filter((student) => {
+      const status = statuses[statusKey(student, weekId)];
+      return status === "done" || status === "makeup";
+    });
+    return orders;
+  }, {});
+}
+
 function weekLabel(week) {
   return `من ${week.start} إلى ${week.end}`;
 }
@@ -278,6 +397,53 @@ function formatDate(dateString) {
     month: "2-digit",
     year: "numeric",
   }).format(new Date(`${dateString}T12:00:00`));
+}
+
+function addDays(dateString, days) {
+  const date = new Date(`${dateString}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function endOfDay(dateString) {
+  return new Date(`${dateString}T23:59:59.999`);
+}
+
+function nextWeekLineStep() {
+  const lastWeek = state.weeks.at(-1);
+  const previousWeek = state.weeks.at(-2);
+  if (lastWeek && previousWeek) {
+    return Math.max(1, lastWeek.start - previousWeek.start);
+  }
+  return 10;
+}
+
+function findWeek(weekId) {
+  return state.weeks.find((week) => week.id === weekId);
+}
+
+function weekDeadline(week) {
+  if (!week?.date) return null;
+  const deadline = endOfDay(week.date);
+  const boundaryDay = state.settings.weekBoundaryDay;
+  let dayOffset = (boundaryDay - deadline.getDay() + 7) % 7;
+  if (dayOffset === 0) dayOffset = 7;
+  deadline.setDate(deadline.getDate() + dayOffset);
+  return deadline;
+}
+
+function isLateSubmission(submission) {
+  const week = findWeek(submission.weekId);
+  const deadline = weekDeadline(week);
+  if (!deadline || !submission.createdAt) return false;
+  return new Date(submission.createdAt) > deadline;
+}
+
+function effectiveSubmissionStatus(submission) {
+  if (submission.status === "done" && isLateSubmission(submission)) {
+    return "makeup";
+  }
+  return submission.status;
 }
 
 function statusKey(studentName, weekId) {
@@ -314,7 +480,7 @@ function statusMark(status) {
 
 function statusLabel(status) {
   if (status === "done") return "fait";
-  if (status === "makeup") return "rattrapage";
+  if (status === "makeup") return "rattrapage / retard";
   if (status === "missed") return "non fait";
   return "vide";
 }
@@ -340,8 +506,8 @@ function weekCompletion(weekId) {
   return state.students.length ? Math.round((done / state.students.length) * 100) : 0;
 }
 
-function renderWeekSelect() {
-  const selected = elements.weekSelect.value || state.weeks.at(-1)?.id;
+function renderWeekSelect(selectedWeekId) {
+  const selected = selectedWeekId || elements.weekSelect.value || state.weeks.at(-1)?.id;
   elements.weekSelect.innerHTML = "";
 
   state.weeks.forEach((week) => {
@@ -437,6 +603,12 @@ function renderStudentList() {
   });
 }
 
+function renderSettings() {
+  if (elements.weekBoundaryDay) {
+    elements.weekBoundaryDay.value = String(state.settings.weekBoundaryDay);
+  }
+}
+
 function emptyCell(tag, text, className = "") {
   const cell = document.createElement(tag);
   if (className) cell.className = className;
@@ -515,11 +687,19 @@ function renderSubmissions() {
     const createdAt = submission.createdAt
       ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short" }).format(new Date(submission.createdAt))
       : "date inconnue";
-    meta.textContent = `${createdAt}${submission.applied ? " - déjà appliquée" : ""}`;
+    const late = isLateSubmission(submission);
+    meta.textContent = [
+      createdAt,
+      late ? "en retard" : "",
+      submission.applied ? "déjà appliquée" : "",
+    ].filter(Boolean).join(" - ");
 
     const pill = document.createElement("span");
-    pill.className = `status-pill status-${submission.status}`;
-    pill.textContent = statusLabel(submission.status);
+    const appliedStatus = effectiveSubmissionStatus(submission);
+    pill.className = `status-pill status-${appliedStatus}`;
+    pill.textContent = late && submission.status === "done"
+      ? "retard"
+      : statusLabel(appliedStatus);
 
     item.append(name, pill, meta);
     if (submission.note) {
@@ -564,9 +744,10 @@ function renderReportDate() {
   elements.reportDate.textContent = today;
 }
 
-function render() {
+function render(selectedWeekId) {
   sortWeeks();
-  renderWeekSelect();
+  renderWeekSelect(selectedWeekId);
+  renderSettings();
   renderStudentList();
   renderTable();
   renderChain();
@@ -754,16 +935,20 @@ async function applySubmissions() {
 
   for (const submission of pending) {
     if (!state.students.includes(submission.student)) continue;
-    setStatus(submission.student, weekId, submission.status);
+    const late = isLateSubmission(submission);
+    const appliedStatus = effectiveSubmissionStatus(submission);
+    setStatus(submission.student, weekId, appliedStatus);
     if (
-      (submission.status === "done" || submission.status === "makeup") &&
+      (appliedStatus === "done" || appliedStatus === "makeup") &&
       !readyOrder.includes(submission.student)
     ) {
       readyOrder.push(submission.student);
     }
     submission.applied = true;
+    submission.late = late;
+    submission.appliedStatus = appliedStatus;
     try {
-      await markSubmissionApplied(submission.id);
+      await markSubmissionApplied(submission.id, { late, appliedStatus });
     } catch {
       submission.applied = false;
     }
@@ -797,6 +982,16 @@ function markNoReplyAsMissed() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   render();
   updateBackendUi(`${missing.length} élève(s) sans réponse marqué(s) en rouge.`);
+}
+
+function updateWeekSettings() {
+  state.settings = normalizeSettings({
+    ...state.settings,
+    weekBoundaryDay: elements.weekBoundaryDay.value,
+  });
+  saveState();
+  render();
+  updateBackendUi("Réglage de semaine synchronisé.");
 }
 
 function addStudent(event) {
@@ -848,9 +1043,31 @@ function addWeek(event) {
   elements.lineEnd.value = "";
   elements.weekDate.value = "";
   saveState();
-  render();
-  elements.weekSelect.value = id;
-  renderChain();
+  render(id);
+  loadSubmissions();
+}
+
+function createNextWeek() {
+  const lastWeek = state.weeks.at(-1);
+  if (!lastWeek) return;
+
+  const step = nextWeekLineStep();
+  const start = lastWeek.start + step;
+  const end = lastWeek.end + step;
+  const date = addDays(lastWeek.date, 7);
+  const id = `${date}-${start}-${end}`;
+
+  if (!state.weeks.some((week) => week.id === id)) {
+    state.weeks.push({ id, start, end, date });
+    saveState();
+  }
+
+  elements.lineStart.value = "";
+  elements.lineEnd.value = "";
+  elements.weekDate.value = "";
+  render(id);
+  loadSubmissions();
+  updateBackendUi(`Semaine suivante créée : ${weekLabel({ start, end })} - ${formatDate(date)}.`);
 }
 
 function exportCsv() {
@@ -1095,9 +1312,10 @@ function resetApp() {
   if (!confirmed) return;
   localStorage.removeItem(STORAGE_KEY);
   state.students = [...defaultStudents];
-  state.weeks = [...defaultWeeks];
-  state.statuses = {};
-  state.readyOrder = {};
+  state.weeks = mergeWeeks(defaultWeeks);
+  state.settings = { ...defaultSettings };
+  state.statuses = buildRecoveredStatuses();
+  state.readyOrder = buildRecoveredReadyOrder();
   saveState();
   render();
 }
@@ -1129,7 +1347,9 @@ elements.refreshSubmissionsBtn.addEventListener("click", loadSubmissions);
 elements.applySubmissionsBtn.addEventListener("click", applySubmissions);
 elements.markNoReplyBtn.addEventListener("click", markNoReplyAsMissed);
 elements.studentForm.addEventListener("submit", addStudent);
+elements.weekBoundaryDay?.addEventListener("change", updateWeekSettings);
 elements.weekForm.addEventListener("submit", addWeek);
+elements.nextWeekBtn.addEventListener("click", createNextWeek);
 elements.weekSelect.addEventListener("change", () => {
   renderChain();
   loadSubmissions();
