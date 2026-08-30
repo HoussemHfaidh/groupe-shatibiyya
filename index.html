@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Suivi Shaṭibiyya</title>
+    <title>Suivi Shaṭibiyya - متابعة الشاطبية</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -15,12 +15,15 @@
           Les élèves envoient leur état depuis un portail web. Le professeur
           applique les réponses, exporte le tableau en image, puis partage
           seulement l'image sur WhatsApp.
+          <span class="arabic-line">
+            يرسل الطلاب حالتهم عبر البوابة، ثم يطبّق الأستاذ الإجابات ويصدر الجدول كصورة.
+          </span>
         </p>
       </div>
       <div class="header-actions">
-        <a id="studentPortalLink" class="link-button" href="student.html">Portail élève</a>
-        <button id="exportImageBtn" class="primary">Exporter l'image</button>
-        <button id="resetBtn" class="ghost">Réinitialiser</button>
+        <a id="studentPortalLink" class="link-button" href="student.html">Portail / بوابة الطالب</a>
+        <button id="exportImageBtn" class="primary">Exporter / تصدير الصورة</button>
+        <button id="resetBtn" class="ghost">Réinitialiser / إعادة ضبط</button>
       </div>
     </header>
 
@@ -28,47 +31,51 @@
       <section class="panel controls-panel" aria-labelledby="import-title">
         <div class="panel-heading">
           <div>
-            <h2 id="import-title">Réponses des élèves</h2>
+            <h2 id="import-title">Réponses des élèves / إجابات الطلاب</h2>
             <p>
               Les élèves remplissent le portail. Ici, le professeur récupère
               les réponses, puis applique au tableau : ceux qui n'ont rien
               envoyé passent automatiquement en rouge.
+              <span class="arabic-line">
+                هنا يسترجع الأستاذ الإجابات ويطبّقها في الجدول.
+              </span>
             </p>
           </div>
         </div>
 
         <label class="field">
-          <span>URL Firebase gratuite</span>
+          <span>URL Firebase / رابط Firebase</span>
           <input id="apiUrlInput" type="url" placeholder="https://votre-projet-default-rtdb.europe-west1.firebasedatabase.app" />
         </label>
 
         <div class="button-row">
-          <button id="saveApiUrlBtn" class="secondary">Sauvegarder l'URL</button>
-          <button id="copyPortalBtn" class="secondary">Copier le lien élève</button>
+          <button id="saveApiUrlBtn" class="secondary">Sauvegarder / حفظ الرابط</button>
+          <button id="copyPortalBtn" class="secondary">Copier lien élève / نسخ رابط الطالب</button>
         </div>
 
         <label class="field">
-          <span>Semaine à remplir</span>
+          <span>Semaine à remplir / الأسبوع المطلوب</span>
           <select id="weekSelect"></select>
         </label>
 
         <div class="button-row">
-          <button id="refreshSubmissionsBtn" class="primary">Récupérer les réponses</button>
-          <button id="applySubmissionsBtn" class="secondary">Appliquer au tableau</button>
-          <button id="markNoReplyBtn" class="secondary">Marquer les sans-réponse</button>
+          <button id="refreshSubmissionsBtn" class="primary">Récupérer / استرجاع الإجابات</button>
+          <button id="applySubmissionsBtn" class="secondary">Appliquer / تطبيق في الجدول</button>
+          <button id="markNoReplyBtn" class="secondary">Sans-réponse / تحديد من لم يجب</button>
         </div>
 
         <div id="syncStatus" class="result-box" aria-live="polite">
-          Source : navigateur local. Ajoutez l'URL Firebase pour le mode en ligne gratuit.
+          Source : navigateur local. Ajoutez l'URL Firebase.
+          <span class="arabic-line">المصدر: المتصفح المحلي. أضف رابط Firebase.</span>
         </div>
 
         <div id="submissionList" class="submission-list"></div>
         <div id="noReplyList" class="no-reply-list"></div>
 
         <details class="manual-import">
-          <summary>Import manuel de secours</summary>
+          <summary>Import manuel / إدخال يدوي</summary>
         <label class="field">
-          <span>Messages anciens</span>
+          <span>Messages anciens / رسائل قديمة</span>
           <textarea
             id="chatInput"
             spellcheck="false"
@@ -80,12 +87,13 @@
         </label>
 
         <div class="button-row">
-          <button id="analyzeBtn" class="primary">Analyser et remplir</button>
-          <button id="clearChatBtn" class="secondary">Vider les messages</button>
+          <button id="analyzeBtn" class="primary">Analyser / تحليل وتعبئة</button>
+          <button id="clearChatBtn" class="secondary">Vider / مسح الرسائل</button>
         </div>
 
         <div id="analysisResult" class="result-box" aria-live="polite">
           Aucun message analysé pour le moment.
+          <span class="arabic-line">لم يتم تحليل أي رسالة بعد.</span>
         </div>
         </details>
       </section>
@@ -93,74 +101,80 @@
       <section class="panel setup-panel" aria-labelledby="setup-title">
         <div class="panel-heading">
           <div>
-            <h2 id="setup-title">Configuration</h2>
-            <p>Ajoutez les élèves et les semaines. Les données restent sur cet ordinateur.</p>
+            <h2 id="setup-title">Configuration / الإعدادات</h2>
+            <p>
+              Ajoutez les élèves et les semaines.
+              <span class="arabic-line">أضف الطلاب والأسابيع.</span>
+            </p>
           </div>
         </div>
 
         <form id="studentForm" class="inline-form">
           <label class="field">
-            <span>Nouvel élève</span>
-            <input id="studentName" type="text" autocomplete="off" placeholder="Nom de l'élève" />
+            <span>Nouvel élève / طالب جديد</span>
+            <input id="studentName" type="text" autocomplete="off" placeholder="Nom de l'élève / اسم الطالب" />
           </label>
-          <button type="submit" class="secondary">Ajouter</button>
+          <button type="submit" class="secondary">Ajouter / إضافة</button>
         </form>
 
         <div id="studentList" class="student-list" aria-label="Liste des élèves"></div>
 
         <label class="field">
-          <span>Début/fin de semaine</span>
+          <span>Début/fin de semaine / بداية ونهاية الأسبوع</span>
           <select id="weekBoundaryDay">
-            <option value="6">Samedi à samedi</option>
-            <option value="0">Dimanche à dimanche</option>
-            <option value="1">Lundi à lundi</option>
-            <option value="2">Mardi à mardi</option>
-            <option value="3">Mercredi à mercredi</option>
-            <option value="4">Jeudi à jeudi</option>
-            <option value="5">Vendredi à vendredi</option>
+            <option value="6">Samedi à samedi / السبت إلى السبت</option>
+            <option value="0">Dimanche à dimanche / الأحد إلى الأحد</option>
+            <option value="1">Lundi à lundi / الاثنين إلى الاثنين</option>
+            <option value="2">Mardi à mardi / الثلاثاء إلى الثلاثاء</option>
+            <option value="3">Mercredi à mercredi / الأربعاء إلى الأربعاء</option>
+            <option value="4">Jeudi à jeudi / الخميس إلى الخميس</option>
+            <option value="5">Vendredi à vendredi / الجمعة إلى الجمعة</option>
           </select>
         </label>
 
         <form id="weekForm" class="week-form">
           <label class="field">
-            <span>Début</span>
+            <span>Début / البداية</span>
             <input id="lineStart" type="number" min="1" placeholder="1031" />
           </label>
           <label class="field">
-            <span>Fin</span>
+            <span>Fin / النهاية</span>
             <input id="lineEnd" type="number" min="1" placeholder="1040" />
           </label>
           <label class="field">
-            <span>Date</span>
+            <span>Date / التاريخ</span>
             <input id="weekDate" type="date" />
           </label>
-          <button type="submit" class="secondary">Ajouter semaine</button>
+          <button type="submit" class="secondary">Ajouter semaine / إضافة أسبوع</button>
         </form>
 
         <div class="button-row week-actions">
-          <button id="nextWeekBtn" type="button" class="secondary">Créer semaine suivante</button>
+          <button id="nextWeekBtn" type="button" class="secondary">Semaine suivante / الأسبوع التالي</button>
         </div>
 
         <div class="legend" aria-label="Légende">
-          <span><i class="swatch done"></i> Fait à temps</span>
-          <span><i class="swatch makeup"></i> Rattrapage / retard</span>
-          <span><i class="swatch missed"></i> Non fait</span>
-          <span><i class="swatch empty"></i> Non renseigné</span>
+          <span><i class="swatch done"></i> Fait / تم</span>
+          <span><i class="swatch makeup"></i> Retard / استدراك</span>
+          <span><i class="swatch missed"></i> Non fait / لم يتم</span>
+          <span><i class="swatch empty"></i> Vide / فارغ</span>
         </div>
       </section>
 
       <section class="panel table-panel" aria-labelledby="table-title">
         <div class="panel-heading table-heading">
           <div>
-            <h2 id="table-title">Tableau hebdomadaire</h2>
+            <h2 id="table-title">Tableau hebdomadaire / الجدول الأسبوعي</h2>
             <p>
               Cliquez sur une cellule pour changer manuellement son état :
               vide, fait, rattrapage, non fait.
+              <span class="arabic-line">
+                اضغط على الخانة لتغيير الحالة يدويًا.
+              </span>
             </p>
           </div>
           <div class="button-row">
-            <button id="exportCsvBtn" class="secondary">Exporter CSV</button>
-            <button id="shareBtn" class="secondary">Partager</button>
+            <button id="exportCsvBtn" class="secondary">CSV / تصدير</button>
+            <button id="shareBtn" class="secondary">Partager / مشاركة</button>
           </div>
         </div>
 
@@ -170,7 +184,7 @@
               <strong>متابعة حفظ الشاطبية</strong>
               <span id="reportDate"></span>
             </div>
-            <small>10 lignes par semaine</small>
+            <small>10 lignes par semaine / 10 أبيات أسبوعيًا</small>
           </div>
           <div id="tableScroll" class="table-scroll">
             <table id="trackingTable" class="tracking-table"></table>
@@ -181,10 +195,13 @@
       <section class="panel chain-panel" aria-labelledby="chain-title">
         <div class="panel-heading">
           <div>
-            <h2 id="chain-title">Ordre de passage</h2>
+            <h2 id="chain-title">Ordre de passage / ترتيب التسميع</h2>
             <p>
               L'ordre est construit avec les élèves détectés comme prêts pour la
               semaine sélectionnée.
+              <span class="arabic-line">
+                يتم ترتيب الطلاب الجاهزين للأسبوع المختار.
+              </span>
             </p>
           </div>
         </div>
@@ -197,6 +214,6 @@
     </template>
 
     <script src="config.js?v=20260606-firebase-default"></script>
-    <script src="app.js?v=20260830-sticky-table"></script>
+    <script src="app.js?v=20260830-bilingual"></script>
   </body>
 </html>

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Portail élève - Shaṭibiyya</title>
+    <title>Portail élève - بوابة الطالب</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="student-page">
@@ -14,50 +14,54 @@
         <p class="subtitle">
           Sélectionne ton nom, la semaine, puis envoie ton état. Les données
           sont sauvegardées dans la base en ligne gratuite du professeur.
+          <span class="arabic-line">
+            اختر اسمك والأسبوع، ثم أرسل حالة التسميع للأستاذ.
+          </span>
         </p>
 
         <form id="submissionForm" class="student-form">
           <label class="field">
-            <span>Nom</span>
+            <span>Nom / الاسم</span>
             <select id="studentSelect" required></select>
           </label>
 
           <label class="field">
-            <span>Semaine</span>
+            <span>Semaine / الأسبوع</span>
             <select id="studentWeekSelect" required></select>
           </label>
 
           <fieldset class="status-choice">
-            <legend>État</legend>
+            <legend>État / الحالة</legend>
             <label>
               <input type="radio" name="status" value="done" required />
-              <span>J'ai récité cette semaine</span>
+              <span>J'ai récité cette semaine / سمّعت هذا الأسبوع</span>
             </label>
             <label>
               <input type="radio" name="status" value="makeup" required />
-              <span>Rattrapage</span>
+              <span>Rattrapage / استدراك</span>
             </label>
             <label>
               <input type="radio" name="status" value="missed" required />
-              <span>Je n'ai pas récité</span>
+              <span>Je n'ai pas récité / لم أسمّع</span>
             </label>
           </fieldset>
 
           <label class="field">
-            <span>Note optionnelle</span>
-            <textarea id="studentNote" rows="3" placeholder="Exemple : j'ai récité à tel élève"></textarea>
+            <span>Note optionnelle / ملاحظة اختيارية</span>
+            <textarea id="studentNote" rows="3" placeholder="Exemple / مثال : j'ai récité à tel élève"></textarea>
           </label>
 
-          <button class="primary" type="submit">Envoyer au professeur</button>
+          <button class="primary" type="submit">Envoyer / إرسال للأستاذ</button>
         </form>
 
         <div id="studentResult" class="result-box" aria-live="polite">
           Chargement du portail...
+          <span class="arabic-line">جار تحميل البوابة...</span>
         </div>
       </section>
     </main>
 
     <script src="config.js?v=20260606-firebase-default"></script>
-    <script src="student.js?v=20260606-firebase-default"></script>
+    <script src="student.js?v=20260830-bilingual-ui"></script>
   </body>
 </html>

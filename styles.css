@@ -122,6 +122,16 @@ h2 {
   max-width: 760px;
 }
 
+.arabic-line {
+  direction: rtl;
+  display: block;
+  margin-top: 4px;
+}
+
+.panel-heading .arabic-line {
+  margin-top: 3px;
+}
+
 .header-actions,
 .button-row {
   display: flex;

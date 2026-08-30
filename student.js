@@ -41,7 +41,7 @@ async function firebaseRequest(path, options = {}) {
     ...options,
   });
   if (!response.ok) {
-    throw new Error("Firebase n'a pas accepté la requête.");
+    throw new Error("Firebase n'a pas accepté la requête. / لم يقبل Firebase الطلب.");
   }
   return response.json();
 }
@@ -53,7 +53,7 @@ async function localRequest(path, options = {}) {
   });
   const payload = await response.json();
   if (!response.ok) {
-    throw new Error(payload.error || "Erreur serveur local.");
+    throw new Error(payload.error || "Erreur serveur local. / خطأ في الخادم المحلي.");
   }
   return payload;
 }
@@ -66,7 +66,7 @@ async function loadConfig() {
       ? await firebaseRequest("config")
       : await localRequest("/api/config");
     if (!config?.students?.length || !config?.weeks?.length) {
-      throw new Error("Configuration absente.");
+      throw new Error("Configuration absente. / الإعدادات غير موجودة.");
     }
     renderOptions(config);
     if (config.students.includes(previousStudent)) {
@@ -75,10 +75,10 @@ async function loadConfig() {
     if (config.weeks.some((week) => week.id === previousWeek)) {
       elements.weekSelect.value = previousWeek;
     }
-    elements.result.textContent = "Portail prêt.";
+    elements.result.textContent = "Portail prêt. / البوابة جاهزة.";
   } catch (error) {
     elements.result.textContent =
-      "Impossible de charger le portail. Vérifiez le lien envoyé par le professeur.";
+      "Impossible de charger le portail. Vérifiez le lien envoyé par le professeur. / تعذر تحميل البوابة، تحقق من رابط الأستاذ.";
   }
 }
 
@@ -113,7 +113,7 @@ async function submitResponse(event) {
     note: elements.note.value.trim(),
   };
 
-  elements.result.textContent = "Envoi en cours...";
+  elements.result.textContent = "Envoi en cours... / جار الإرسال...";
   try {
     if (getFirebaseUrl()) {
       await firebaseRequest("submissions", {
@@ -132,7 +132,7 @@ async function submitResponse(event) {
     }
     elements.form.reset();
     elements.weekSelect.value = payload.weekId;
-    elements.result.textContent = "Réponse envoyée. Le professeur la verra dans son tableau.";
+    elements.result.textContent = "Réponse envoyée. Le professeur la verra dans son tableau. / تم إرسال الإجابة، سيطلع عليها الأستاذ في الجدول.";
   } catch (error) {
     elements.result.textContent = error.message;
   }

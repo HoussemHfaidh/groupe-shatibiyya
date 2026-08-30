@@ -242,9 +242,9 @@ async function loadConfigFromBackend() {
     } else if (getFirebaseUrl()) {
       await syncConfigNow();
     }
-    updateBackendUi("Configuration chargée.");
+    updateBackendUi("Configuration chargée. / تم تحميل الإعدادات.");
   } catch (error) {
-    updateBackendUi(getFirebaseUrl() ? error.message : "Mode local sans serveur de données.");
+    updateBackendUi(getFirebaseUrl() ? error.message : "Mode local sans serveur de données. / وضع محلي بدون خادم.");
   }
 }
 
@@ -274,9 +274,9 @@ async function syncConfigNow() {
         body: JSON.stringify(config),
       });
     }
-    updateBackendUi("Élèves et semaines synchronisés.");
+    updateBackendUi("Élèves et semaines synchronisés. / تم حفظ الطلاب والأسابيع.");
   } catch {
-    updateBackendUi(getFirebaseUrl() ? "Synchronisation Firebase impossible." : "Mode navigateur local.");
+    updateBackendUi(getFirebaseUrl() ? "Synchronisation Firebase impossible. / تعذرت المزامنة مع Firebase." : "Mode navigateur local. / وضع محلي.");
   }
 }
 
@@ -295,7 +295,7 @@ async function loadSubmissions() {
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     renderSubmissions();
-    updateBackendUi(`${state.submissions.length} réponse(s) récupérée(s).`);
+    updateBackendUi(`${state.submissions.length} réponse(s) récupérée(s). / تم استرجاع ${state.submissions.length} إجابة.`);
   } catch (error) {
     updateBackendUi(error.message);
   }
@@ -324,8 +324,8 @@ function updateBackendUi(message = "") {
     elements.apiUrlInput.value = getFirebaseUrl();
   }
   const source = getFirebaseUrl()
-    ? "Source : Firebase en ligne gratuite."
-    : "Source : navigateur local. Ajoutez l'URL Firebase pour le mode en ligne gratuit.";
+    ? "Source : Firebase en ligne. / المصدر: Firebase"
+    : "Source : navigateur local. Ajoutez l'URL Firebase. / المصدر: المتصفح المحلي، أضف رابط Firebase.";
   if (elements.syncStatus) {
     elements.syncStatus.textContent = message ? `${source} ${message}` : source;
   }
@@ -480,10 +480,10 @@ function statusMark(status) {
 }
 
 function statusLabel(status) {
-  if (status === "done") return "fait";
-  if (status === "makeup") return "rattrapage / retard";
-  if (status === "missed") return "non fait";
-  return "vide";
+  if (status === "done") return "fait / تم";
+  if (status === "makeup") return "rattrapage / retard / استدراك";
+  if (status === "missed") return "non fait / لم يتم";
+  return "vide / فارغ";
 }
 
 function studentCompletion(studentName) {
@@ -669,7 +669,7 @@ function renderChain() {
   elements.readingChain.innerHTML = "";
   if (!order.length) {
     const item = document.createElement("li");
-    item.textContent = "Aucun élève prêt détecté pour cette semaine.";
+    item.textContent = "Aucun élève prêt pour cette semaine. / لا يوجد طالب جاهز لهذا الأسبوع.";
     elements.readingChain.append(item);
     return;
   }
@@ -679,7 +679,9 @@ function renderChain() {
     const reader = document.createElement("strong");
     reader.textContent = student;
     const target = document.createElement("span");
-    target.textContent = index === 0 ? " lit au professeur" : ` lit à ${order[index - 1]}`;
+    target.textContent = index === 0
+      ? " lit au professeur / يسمع للأستاذ"
+      : ` lit à ${order[index - 1]} / يسمع لـ ${order[index - 1]}`;
     item.append(reader, target);
     elements.readingChain.append(item);
   });
@@ -694,7 +696,7 @@ function renderSubmissions() {
   if (!submissions.length) {
     const empty = document.createElement("div");
     empty.className = "submission-item";
-    empty.textContent = "Aucune réponse reçue pour cette semaine.";
+    empty.textContent = "Aucune réponse reçue pour cette semaine. / لا توجد إجابات لهذا الأسبوع.";
     elements.submissionList.append(empty);
     renderNoReplyList();
     return;
@@ -711,19 +713,19 @@ function renderSubmissions() {
     meta.className = "submission-meta";
     const createdAt = submission.createdAt
       ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short" }).format(new Date(submission.createdAt))
-      : "date inconnue";
+      : "date inconnue / تاريخ غير معروف";
     const late = isLateSubmission(submission);
     meta.textContent = [
       createdAt,
-      late ? "en retard" : "",
-      submission.applied ? "déjà appliquée" : "",
+      late ? "en retard / متأخر" : "",
+      submission.applied ? "déjà appliquée / تم تطبيقها" : "",
     ].filter(Boolean).join(" - ");
 
     const pill = document.createElement("span");
     const appliedStatus = effectiveSubmissionStatus(submission);
     pill.className = `status-pill status-${appliedStatus}`;
     pill.textContent = late && submission.status === "done"
-      ? "retard"
+      ? "retard / متأخر"
       : statusLabel(appliedStatus);
 
     item.append(name, pill, meta);
@@ -759,7 +761,7 @@ function renderNoReplyList() {
   }
 
   elements.noReplyList.classList.add("visible");
-  elements.noReplyList.innerHTML = `<strong>Sans réponse pour cette semaine :</strong> ${missing.join("، ")}`;
+  elements.noReplyList.innerHTML = `<strong>Sans réponse / بدون إجابة :</strong> ${missing.join("، ")}`;
 }
 
 function renderReportDate() {
@@ -900,7 +902,7 @@ function applyChatAnalysis() {
   const raw = elements.chatInput.value.trim();
 
   if (!weekId || !raw) {
-    elements.analysisResult.textContent = "Choisissez une semaine et collez quelques messages.";
+    elements.analysisResult.textContent = "Choisissez une semaine et collez quelques messages. / اختر أسبوعًا والصق بعض الرسائل.";
     return;
   }
 
@@ -936,7 +938,7 @@ function applyChatAnalysis() {
 
   if (!updates.length) {
     elements.analysisResult.textContent =
-      `${messages.length} message(s) lu(s), mais aucun statut reconnu. Ajoutez des mots comme "تم", "سمعت", "استدراك" ou "لا".`;
+      `${messages.length} message(s) lu(s), mais aucun statut reconnu. / تمت قراءة ${messages.length} رسالة، لكن لم يتم التعرف على حالة.`;
     return;
   }
 
@@ -946,9 +948,9 @@ function applyChatAnalysis() {
   }, {});
 
   elements.analysisResult.innerHTML = [
-    `${messages.length} message(s) lu(s).`,
-    `${updates.length} mise(s) à jour appliquée(s).`,
-    `Fait : ${summary.done || 0}, rattrapage : ${summary.makeup || 0}, non fait : ${summary.missed || 0}.`,
+    `${messages.length} message(s) lu(s). / تمت قراءة ${messages.length} رسالة.`,
+    `${updates.length} mise(s) à jour appliquée(s). / تم تطبيق ${updates.length} تحديث.`,
+    `Fait / تم : ${summary.done || 0}, retard / استدراك : ${summary.makeup || 0}, non fait / لم يتم : ${summary.missed || 0}.`,
   ].join("<br>");
 }
 
@@ -987,7 +989,7 @@ async function applySubmissions() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   render();
   updateBackendUi(
-    `${pending.length} réponse(s) appliquée(s). ${missing.length} sans-réponse marqué(s) en rouge.`
+    `${pending.length} réponse(s) appliquée(s). / تم تطبيق ${pending.length} إجابة. ${missing.length} sans-réponse. / ${missing.length} بدون إجابة.`
   );
 }
 
@@ -995,19 +997,19 @@ function markNoReplyAsMissed() {
   const weekId = elements.weekSelect.value;
   const missing = studentsWithoutReply();
   if (!missing.length) {
-    updateBackendUi("Aucun élève sans réponse à marquer.");
+    updateBackendUi("Aucun élève sans réponse à marquer. / لا يوجد طالب بدون إجابة.");
     return;
   }
 
   const confirmed = window.confirm(
-    `Marquer ${missing.length} élève(s) sans réponse en rouge pour cette semaine ?`
+    `Marquer ${missing.length} élève(s) sans réponse en rouge ? / هل تريد تحديد ${missing.length} طالب بدون إجابة باللون الأحمر؟`
   );
   if (!confirmed) return;
 
   missing.forEach((student) => setStatus(student, weekId, "missed"));
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   render();
-  updateBackendUi(`${missing.length} élève(s) sans réponse marqué(s) en rouge.`);
+  updateBackendUi(`${missing.length} élève(s) sans réponse marqué(s). / تم تحديد ${missing.length} طالب بدون إجابة.`);
 }
 
 function updateWeekSettings() {
@@ -1017,7 +1019,7 @@ function updateWeekSettings() {
   });
   saveState();
   render();
-  updateBackendUi("Réglage de semaine synchronisé.");
+  updateBackendUi("Réglage de semaine synchronisé. / تم حفظ إعداد الأسبوع.");
 }
 
 function addStudent(event) {
@@ -1035,7 +1037,7 @@ function addStudent(event) {
 }
 
 function removeStudent(studentName) {
-  const confirmed = window.confirm(`Supprimer ${studentName} du tableau ?`);
+  const confirmed = window.confirm(`Supprimer ${studentName} du tableau ? / هل تريد حذف ${studentName} من الجدول؟`);
   if (!confirmed) return;
 
   state.students = state.students.filter((student) => student !== studentName);
@@ -1093,7 +1095,7 @@ function createNextWeek() {
   elements.weekDate.value = "";
   render(id);
   loadSubmissions();
-  updateBackendUi(`Semaine suivante créée : ${weekLabel({ start, end })} - ${formatDate(date)}.`);
+  updateBackendUi(`Semaine suivante créée : ${weekLabel({ start, end })} - ${formatDate(date)}. / تم إنشاء الأسبوع التالي.`);
 }
 
 function exportCsv() {
@@ -1334,7 +1336,7 @@ function drawCell(context, x, y, width, height, text, fill, options = {}) {
 }
 
 function resetApp() {
-  const confirmed = window.confirm("Réinitialiser tous les élèves, semaines et statuts ?");
+  const confirmed = window.confirm("Réinitialiser tous les élèves, semaines et statuts ? / هل تريد إعادة ضبط كل الطلاب والأسابيع والحالات؟");
   if (!confirmed) return;
   localStorage.removeItem(STORAGE_KEY);
   state.students = [...defaultStudents];
@@ -1356,16 +1358,16 @@ async function copyStudentPortalLink() {
   const link = buildStudentPortalUrl();
   try {
     await navigator.clipboard.writeText(link);
-    updateBackendUi("Lien élève copié.");
+    updateBackendUi("Lien élève copié. / تم نسخ رابط الطالب.");
   } catch {
-    updateBackendUi(`Lien élève : ${link}`);
+    updateBackendUi(`Lien élève / رابط الطالب : ${link}`);
   }
 }
 
 elements.analyzeBtn.addEventListener("click", applyChatAnalysis);
 elements.clearChatBtn.addEventListener("click", () => {
   elements.chatInput.value = "";
-  elements.analysisResult.textContent = "Messages vidés.";
+  elements.analysisResult.textContent = "Messages vidés. / تم مسح الرسائل.";
 });
 elements.saveApiUrlBtn.addEventListener("click", saveBackendUrl);
 elements.copyPortalBtn.addEventListener("click", copyStudentPortalLink);
