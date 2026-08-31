@@ -661,10 +661,15 @@ function averageMissing() {
 
 function renderChain() {
   const selectedWeek = elements.weekSelect.value;
-  const order = state.readyOrder[selectedWeek] || state.students.filter((student) => {
+  const statusReadyStudents = state.students.filter((student) => {
     const status = getStatus(student, selectedWeek);
     return status === "done" || status === "makeup";
   });
+  const savedOrder = state.readyOrder[selectedWeek] || [];
+  const order = [
+    ...savedOrder.filter((student) => statusReadyStudents.includes(student)),
+    ...statusReadyStudents.filter((student) => !savedOrder.includes(student)),
+  ];
 
   elements.readingChain.innerHTML = "";
   if (!order.length) {

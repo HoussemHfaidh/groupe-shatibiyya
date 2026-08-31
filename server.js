@@ -177,6 +177,15 @@ function buildRecoveredReadyOrder() {
   }, {});
 }
 
+function addReadyStudent(weekId, student) {
+  if (!store.readyOrder[weekId]) {
+    store.readyOrder[weekId] = [];
+  }
+  if (!store.readyOrder[weekId].includes(student)) {
+    store.readyOrder[weekId].push(student);
+  }
+}
+
 function normalizeSettings(settings = {}) {
   const weekBoundaryDay = Number(settings.weekBoundaryDay);
   return {
@@ -295,6 +304,11 @@ async function handleApi(request, response, url) {
     const validator = String(body.validator || "").trim();
     const validatorLabel = String(body.validatorLabel || "").trim();
     const note = String(body.note || "").trim();
+    const appliedStatus = ["done", "makeup", "missed"].includes(body.appliedStatus)
+      ? body.appliedStatus
+      : status;
+    const createdAt = String(body.createdAt || new Date().toISOString());
+    const applied = Boolean(body.applied);
 
     if (!student || !weekId || !["done", "makeup", "missed"].includes(status)) {
       sendJson(response, 400, { error: "Réponse incomplète." });
@@ -313,9 +327,20 @@ async function handleApi(request, response, url) {
       validator,
       validatorLabel,
       note,
-      applied: false,
-      createdAt: new Date().toISOString(),
+      applied,
+      createdAt,
     };
+    if (applied) {
+      submission.appliedAt = String(body.appliedAt || createdAt);
+      submission.appliedStatus = appliedStatus;
+      if (typeof body.late === "boolean") {
+        submission.late = body.late;
+      }
+      store.statuses[statusKey(student, weekId)] = appliedStatus;
+      if (appliedStatus === "done" || appliedStatus === "makeup") {
+        addReadyStudent(weekId, student);
+      }
+    }
     store.submissions.unshift(submission);
     await saveStore();
     sendJson(response, 201, { ok: true, submission });

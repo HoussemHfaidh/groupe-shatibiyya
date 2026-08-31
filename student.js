@@ -54,6 +54,34 @@ function isGreenStudent(config, studentName, weekId) {
   return getStatus(config, studentName, weekId) === "done";
 }
 
+function findWeek(weekId) {
+  return currentConfig?.weeks?.find((week) => week.id === weekId);
+}
+
+function endOfDay(dateString) {
+  return new Date(`${dateString}T23:59:59.999`);
+}
+
+function weekDeadline(week) {
+  if (!week?.date) return null;
+  const deadline = endOfDay(week.date);
+  const boundaryDay = Number(currentConfig?.settings?.weekBoundaryDay ?? 6);
+  let dayOffset = (boundaryDay - deadline.getDay() + 7) % 7;
+  if (dayOffset === 0) dayOffset = 7;
+  deadline.setDate(deadline.getDate() + dayOffset);
+  return deadline;
+}
+
+function isLateConfirmation(weekId, createdAt) {
+  const deadline = weekDeadline(findWeek(weekId));
+  if (!deadline || !createdAt) return false;
+  return new Date(createdAt) > deadline;
+}
+
+function confirmationStatus(weekId, createdAt) {
+  return isLateConfirmation(weekId, createdAt) ? "makeup" : "done";
+}
+
 function getFirebaseUrl() {
   const fromQuery = new URLSearchParams(window.location.search).get("db");
   const configured = fromQuery || localStorage.getItem(FIREBASE_URL_KEY) || window.SHATIBIYYA_FIREBASE_DB_URL || "";
@@ -226,10 +254,38 @@ function setFormEnabled(enabled) {
   elements.form.querySelector("button[type='submit']").disabled = !enabled;
 }
 
+async function applyConfirmedStatus(student, weekId, status) {
+  const key = statusKey(student, weekId);
+
+  if (getFirebaseUrl()) {
+    await firebaseRequest("config/statuses", {
+      method: "PATCH",
+      body: JSON.stringify({ [key]: status }),
+    });
+  } else {
+    await localRequest("/api/config", {
+      method: "PUT",
+      body: JSON.stringify({
+        ...currentConfig,
+        statuses: {
+          ...(currentConfig.statuses || {}),
+          [key]: status,
+        },
+      }),
+    });
+  }
+
+  currentConfig.statuses = {
+    ...(currentConfig.statuses || {}),
+    [key]: status,
+  };
+}
+
 async function submitResponse(event) {
   event.preventDefault();
   const validator = elements.validatorSelect.value;
   const student = elements.studentSelect.value;
+  const weekId = elements.weekSelect.value;
 
   if (!validator || !student) {
     elements.result.textContent =
@@ -245,7 +301,7 @@ async function submitResponse(event) {
 
   const payload = {
     student,
-    weekId: elements.weekSelect.value,
+    weekId,
     status: "done",
     validator,
     validatorLabel: validator,
@@ -254,19 +310,34 @@ async function submitResponse(event) {
 
   elements.result.textContent = "Envoi en cours... / جار الإرسال...";
   try {
+    const createdAt = new Date().toISOString();
+    const appliedStatus = confirmationStatus(weekId, createdAt);
+    const late = appliedStatus === "makeup";
+
     if (getFirebaseUrl()) {
       await firebaseRequest("submissions", {
         method: "POST",
         body: JSON.stringify({
           ...payload,
-          applied: false,
-          createdAt: new Date().toISOString(),
+          applied: true,
+          appliedAt: createdAt,
+          appliedStatus,
+          createdAt,
+          late,
         }),
       });
+      await applyConfirmedStatus(student, weekId, appliedStatus);
     } else {
       await localRequest("/api/submissions", {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...payload,
+          applied: true,
+          appliedAt: createdAt,
+          appliedStatus,
+          createdAt,
+          late,
+        }),
       });
     }
 
