@@ -11,6 +11,11 @@
   --red: #f6bac3;
   --header: #bfd0eb;
   --shadow: 0 12px 28px rgba(27, 40, 64, 0.08);
+  --index-col-width: 42px;
+  --name-col-width: 150px;
+  --completion-col-width: 98px;
+  --percent-col-width: 98px;
+  --week-col-width: 92px;
 }
 
 * {
@@ -37,6 +42,7 @@ button {
   cursor: pointer;
   font-weight: 700;
   min-height: 42px;
+  overflow-wrap: anywhere;
   padding: 0 16px;
 }
 
@@ -54,6 +60,7 @@ textarea:focus-visible {
   display: inline-flex;
   font-weight: 800;
   min-height: 42px;
+  overflow-wrap: anywhere;
   padding: 0 16px;
   text-decoration: none;
 }
@@ -388,6 +395,7 @@ textarea {
 .capture-card {
   background: #fff;
   border: 1px solid #aeb8ca;
+  max-width: 100%;
   overflow: hidden;
 }
 
@@ -413,9 +421,11 @@ textarea {
 }
 
 .table-scroll {
+  max-width: 100%;
   overflow: auto;
   position: relative;
   scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tracking-table {
@@ -424,9 +434,15 @@ textarea {
   direction: rtl;
   font-family: Arial, "Noto Naskh Arabic", "Geeza Pro", sans-serif;
   font-size: 13px;
-  min-width: calc(388px + (var(--week-count, 9) * 92px));
+  min-width: calc(
+    var(--index-col-width) + var(--name-col-width) + var(--completion-col-width) +
+      var(--percent-col-width) + (var(--week-count, 9) * var(--week-col-width))
+  );
   table-layout: fixed;
-  width: calc(388px + (var(--week-count, 9) * 92px));
+  width: calc(
+    var(--index-col-width) + var(--name-col-width) + var(--completion-col-width) +
+      var(--percent-col-width) + (var(--week-count, 9) * var(--week-col-width))
+  );
 }
 
 .tracking-table th,
@@ -460,31 +476,31 @@ textarea {
 
 .tracking-table .name-col {
   overflow: hidden;
-  min-width: 150px;
+  min-width: var(--name-col-width);
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
-  width: 150px;
+  width: var(--name-col-width);
 }
 
 .tracking-table .index-col {
-  min-width: 42px;
-  width: 42px;
+  min-width: var(--index-col-width);
+  width: var(--index-col-width);
 }
 
 .tracking-table .percent-col {
-  min-width: 98px;
-  width: 98px;
+  min-width: var(--percent-col-width);
+  width: var(--percent-col-width);
 }
 
 .tracking-table .completion-col {
-  min-width: 98px;
-  width: 98px;
+  min-width: var(--completion-col-width);
+  width: var(--completion-col-width);
 }
 
 .tracking-table .week-col {
-  min-width: 92px;
-  width: 92px;
+  min-width: var(--week-col-width);
+  width: var(--week-col-width);
 }
 
 .tracking-table .sticky-col {
@@ -508,11 +524,11 @@ textarea {
 }
 
 .tracking-table .name-col.sticky-col {
-  right: 42px;
+  right: var(--index-col-width);
 }
 
 .tracking-table .completion-col.sticky-col {
-  right: 192px;
+  right: calc(var(--index-col-width) + var(--name-col-width));
 }
 
 .tracking-table button.cell-button {
@@ -663,6 +679,13 @@ textarea {
 }
 
 @media (max-width: 1050px) {
+  :root {
+    --name-col-width: 136px;
+    --completion-col-width: 84px;
+    --percent-col-width: 86px;
+    --week-col-width: 86px;
+  }
+
   .app-header,
   .layout,
   .table-heading {
@@ -686,9 +709,57 @@ textarea {
     grid-row: auto;
     margin-bottom: 16px;
   }
+
+  .table-scroll {
+    border-top: 1px solid #aeb8ca;
+  }
 }
 
 @media (max-width: 720px) {
+  :root {
+    --index-col-width: 34px;
+    --name-col-width: 112px;
+    --completion-col-width: 66px;
+    --percent-col-width: 76px;
+    --week-col-width: 80px;
+  }
+
+  .app-header {
+    padding: 18px 12px;
+  }
+
+  h1 {
+    font-size: 26px;
+    line-height: 1.12;
+  }
+
+  .layout {
+    padding: 12px 10px 28px;
+  }
+
+  .header-actions,
+  .button-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions button,
+  .header-actions .link-button,
+  .button-row button,
+  .button-row .link-button,
+  .student-form button {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .panel-heading {
+    display: block;
+  }
+
+  .panel-heading .button-row {
+    margin-top: 12px;
+  }
+
   .week-form,
   .inline-form {
     grid-template-columns: 1fr;
@@ -696,5 +767,69 @@ textarea {
 
   .panel {
     padding: 14px;
+  }
+
+  .report-title {
+    align-items: flex-start;
+    display: grid;
+    gap: 6px;
+  }
+
+  .tracking-table {
+    font-size: 12px;
+  }
+
+  .tracking-table th,
+  .tracking-table td {
+    height: 32px;
+    padding: 3px 4px;
+  }
+
+  .tracking-table .table-header-row th {
+    height: 62px;
+  }
+
+  .tracking-table .name-col {
+    white-space: normal;
+  }
+
+  .student-shell {
+    align-items: start;
+    min-height: auto;
+    padding: 10px;
+    place-items: stretch;
+  }
+
+  .student-card {
+    max-width: none;
+  }
+
+  .validator-option {
+    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .validator-marker {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 420px) {
+  :root {
+    --index-col-width: 32px;
+    --name-col-width: 102px;
+    --completion-col-width: 58px;
+    --percent-col-width: 68px;
+    --week-col-width: 74px;
+  }
+
+  .tracking-table {
+    font-size: 11px;
+  }
+
+  .tracking-table th,
+  .tracking-table td {
+    padding: 2px 3px;
   }
 }
