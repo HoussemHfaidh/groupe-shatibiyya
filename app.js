@@ -964,11 +964,13 @@ async function applySubmissions() {
   const weekId = elements.weekSelect.value;
   await loadSubmissions();
 
-  const pending = state.submissions.filter((submission) => submission.weekId === weekId && !submission.applied);
+  const applicable = state.submissions.filter((submission) => {
+    if (submission.weekId !== weekId || !state.students.includes(submission.student)) return false;
+    return !submission.applied || getStatus(submission.student, weekId) !== effectiveSubmissionStatus(submission);
+  });
   const readyOrder = state.readyOrder[weekId] || [];
 
-  for (const submission of pending) {
-    if (!state.students.includes(submission.student)) continue;
+  for (const submission of applicable) {
     const late = isLateSubmission(submission);
     const appliedStatus = effectiveSubmissionStatus(submission);
     setStatus(submission.student, weekId, appliedStatus);
@@ -992,10 +994,11 @@ async function applySubmissions() {
   missing.forEach((student) => setStatus(student, weekId, "missed"));
 
   state.readyOrder[weekId] = readyOrder;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  saveState();
+  await syncConfigNow();
   render();
   updateBackendUi(
-    `${pending.length} réponse(s) appliquée(s). / تم تطبيق ${pending.length} إجابة. ${missing.length} sans-réponse. / ${missing.length} بدون إجابة.`
+    `${applicable.length} réponse(s) appliquée(s). / تم تطبيق ${applicable.length} إجابة. ${missing.length} sans-réponse. / ${missing.length} بدون إجابة.`
   );
 }
 
@@ -1013,7 +1016,7 @@ function markNoReplyAsMissed() {
   if (!confirmed) return;
 
   missing.forEach((student) => setStatus(student, weekId, "missed"));
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  saveState();
   render();
   updateBackendUi(`${missing.length} élève(s) sans réponse marqué(s). / تم تحديد ${missing.length} طالب بدون إجابة.`);
 }
