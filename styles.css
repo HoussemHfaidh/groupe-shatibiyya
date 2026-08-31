@@ -628,14 +628,14 @@ textarea {
   direction: rtl;
   display: flex;
   gap: 10px;
-  justify-content: flex-end;
+  justify-content: space-between;
   min-height: 42px;
   padding: 9px 10px;
 }
 
-.validator-option input {
-  min-height: 0;
-  width: auto;
+.validator-option strong {
+  font-size: 14px;
+  text-align: right;
 }
 
 .validator-option.available {
@@ -651,7 +651,14 @@ textarea {
   opacity: 0.78;
 }
 
-.validator-option.unavailable span {
+.validator-marker {
+  direction: ltr;
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.validator-option.unavailable strong {
   text-decoration: line-through;
 }
 

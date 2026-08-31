@@ -732,7 +732,7 @@ function renderSubmissions() {
     if (submission.validatorLabel || submission.validator) {
       const validator = document.createElement("p");
       validator.className = "submission-meta";
-      validator.textContent = `A récité à / سمّع عند : ${submission.validatorLabel || submission.validator}`;
+      validator.textContent = `Confirmé par / أكّده : ${submission.validatorLabel || submission.validator}`;
       item.append(validator);
     }
     if (submission.note) {

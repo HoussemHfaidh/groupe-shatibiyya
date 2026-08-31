@@ -12,52 +12,41 @@
         <p class="eyebrow">الشاطبية - حرز الأماني</p>
         <h1>Déclaration de mémorisation</h1>
         <p class="subtitle">
-          Sélectionne ton nom, la semaine, puis envoie ton état. Les données
-          sont sauvegardées dans la base en ligne gratuite du professeur.
+          Choisis la semaine, regarde les élèves verts que tu peux contacter,
+          puis la personne contactée confirme ta récitation.
           <span class="arabic-line">
-            اختر اسمك والأسبوع، ثم أرسل حالة التسميع للأستاذ.
+            اختر الأسبوع، ثم انظر إلى الطلاب باللون الأخضر، وبعد التسميع يؤكد الطالب الذي سمعت عنده.
           </span>
         </p>
 
         <form id="submissionForm" class="student-form">
-          <label class="field">
-            <span>Nom / الاسم</span>
-            <select id="studentSelect" required></select>
-          </label>
-
           <label class="field">
             <span>Semaine / الأسبوع</span>
             <select id="studentWeekSelect" required></select>
           </label>
 
           <fieldset id="validatorChoice" class="validator-choice">
-            <legend>À qui as-tu récité ? / لمن سمّعت؟</legend>
+            <legend>Élèves disponibles / الطلاب المتاحون</legend>
             <p id="validatorHint" class="validator-hint"></p>
             <div id="validatorList" class="validator-list"></div>
           </fieldset>
 
-          <fieldset class="status-choice">
-            <legend>État / الحالة</legend>
-            <label>
-              <input type="radio" name="status" value="done" required />
-              <span>J'ai récité cette semaine / سمّعت هذا الأسبوع</span>
-            </label>
-            <label>
-              <input type="radio" name="status" value="makeup" required />
-              <span>Rattrapage / استدراك</span>
-            </label>
-            <label>
-              <input type="radio" name="status" value="missed" required />
-              <span>Je n'ai pas récité / لم أسمّع</span>
-            </label>
-          </fieldset>
+          <label class="field">
+            <span>Je suis l'élève vert qui confirme / أنا الطالب الأخضر الذي يؤكد</span>
+            <select id="validatorSelect" required></select>
+          </label>
+
+          <label class="field">
+            <span>L'élève qui a récité chez moi / الطالب الذي سمّع عندي</span>
+            <select id="studentSelect" required></select>
+          </label>
 
           <label class="field">
             <span>Note optionnelle / ملاحظة اختيارية</span>
-            <textarea id="studentNote" rows="3" placeholder="Exemple / مثال : j'ai récité à tel élève"></textarea>
+            <textarea id="studentNote" rows="3" placeholder="Exemple / مثال : récitation confirmée"></textarea>
           </label>
 
-          <button class="primary" type="submit">Envoyer / إرسال للأستاذ</button>
+          <button class="primary" type="submit">Confirmer / تأكيد التسميع</button>
         </form>
 
         <div id="studentResult" class="result-box" aria-live="polite">
@@ -68,6 +57,6 @@
     </main>
 
     <script src="config.js?v=20260606-firebase-default"></script>
-    <script src="student.js?v=20260831-validators"></script>
+    <script src="student.js?v=20260831-validator-confirmation"></script>
   </body>
 </html>

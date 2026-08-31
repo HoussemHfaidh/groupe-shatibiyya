@@ -1,8 +1,8 @@
 const elements = {
   form: document.querySelector("#submissionForm"),
   studentSelect: document.querySelector("#studentSelect"),
+  validatorSelect: document.querySelector("#validatorSelect"),
   weekSelect: document.querySelector("#studentWeekSelect"),
-  validatorChoice: document.querySelector("#validatorChoice"),
   validatorHint: document.querySelector("#validatorHint"),
   validatorList: document.querySelector("#validatorList"),
   note: document.querySelector("#studentNote"),
@@ -10,7 +10,6 @@ const elements = {
 };
 
 const FIREBASE_URL_KEY = "shatibiyya-firebase-url";
-const TEACHER_VALIDATOR = "__teacher__";
 let currentConfig = null;
 
 function weekLabel(week) {
@@ -51,7 +50,7 @@ function getStatus(config, studentName, weekId) {
   return config?.statuses?.[statusKey(studentName, weekId)] || "";
 }
 
-function isValidatorAvailable(config, studentName, weekId) {
+function isGreenStudent(config, studentName, weekId) {
   return getStatus(config, studentName, weekId) === "done";
 }
 
@@ -94,39 +93,31 @@ async function localRequest(path, options = {}) {
 
 async function loadConfig() {
   try {
-    const previousStudent = elements.studentSelect.value;
     const previousWeek = elements.weekSelect.value;
-    const previousValidator = new FormData(elements.form).get("validator");
+    const previousValidator = elements.validatorSelect.value;
+    const previousStudent = elements.studentSelect.value;
     const config = getFirebaseUrl()
       ? await firebaseRequest("config")
       : await localRequest("/api/config");
+
     if (!config?.students?.length || !config?.weeks?.length) {
       throw new Error("Configuration absente. / الإعدادات غير موجودة.");
     }
+
     currentConfig = config;
-    renderOptions(config);
-    if (config.students.includes(previousStudent)) {
-      elements.studentSelect.value = previousStudent;
-    }
-    if (config.weeks.some((week) => week.id === previousWeek)) {
-      elements.weekSelect.value = previousWeek;
-    }
-    renderValidators(previousValidator);
+    renderWeeks(config, previousWeek);
+    renderWeekState(previousValidator, previousStudent);
     elements.result.textContent = "Portail prêt. / البوابة جاهزة.";
-  } catch (error) {
+  } catch {
     elements.result.textContent =
       "Impossible de charger le portail. Vérifiez le lien envoyé par le professeur. / تعذر تحميل البوابة، تحقق من رابط الأستاذ.";
   }
 }
 
-function renderOptions(config) {
-  elements.studentSelect.innerHTML = "";
-  config.students.forEach((student) => {
-    const option = document.createElement("option");
-    option.value = student;
-    option.textContent = student;
-    elements.studentSelect.append(option);
-  });
+function renderWeeks(config, preferredWeekId = "") {
+  const selected = config.weeks.some((week) => week.id === preferredWeekId)
+    ? preferredWeekId
+    : config.weeks.at(-1)?.id;
 
   elements.weekSelect.innerHTML = "";
   config.weeks.forEach((week) => {
@@ -135,103 +126,129 @@ function renderOptions(config) {
     option.textContent = `${weekLabel(week)} - ${formatDate(week.date)}`;
     elements.weekSelect.append(option);
   });
-  if (config.weeks.length) {
-    elements.weekSelect.value = config.weeks.at(-1).id;
+
+  if (selected) {
+    elements.weekSelect.value = selected;
   }
 }
 
-function selectedStatus() {
-  return new FormData(elements.form).get("status") || "";
-}
-
-function validatorLabel(value) {
-  return value === TEACHER_VALIDATOR ? "Professeur / الأستاذ" : value;
-}
-
-function renderValidators(preferredValidator = "") {
-  if (!currentConfig || !elements.validatorList) return;
+function renderWeekState(preferredValidator = "", preferredStudent = "") {
+  if (!currentConfig) return;
 
   const weekId = elements.weekSelect.value;
-  const currentStudent = elements.studentSelect.value;
-  const status = selectedStatus();
-  const needsValidator = status === "done" || status === "makeup";
+  const greenStudents = currentConfig.students.filter((student) => isGreenStudent(currentConfig, student, weekId));
+  const waitingStudents = currentConfig.students.filter((student) => !isGreenStudent(currentConfig, student, weekId));
 
-  elements.validatorChoice.disabled = !needsValidator;
+  renderAvailabilityList(greenStudents, weekId);
+  renderValidatorSelect(greenStudents, preferredValidator);
+  renderStudentSelect(waitingStudents, preferredStudent);
+  setFormEnabled(greenStudents.length > 0 && waitingStudents.length > 0);
+}
+
+function renderAvailabilityList(greenStudents, weekId) {
   elements.validatorList.innerHTML = "";
 
-  if (!needsValidator) {
-    elements.validatorHint.textContent = "Pas nécessaire si tu n'as pas récité. / غير مطلوب إذا لم تسمع.";
-    return;
-  }
-
-  const availableStudents = currentConfig.students.filter((student) => (
-    student !== currentStudent && isValidatorAvailable(currentConfig, student, weekId)
-  ));
-  const selectedValue = availableStudents.includes(preferredValidator)
-    ? preferredValidator
-    : availableStudents[0] || TEACHER_VALIDATOR;
-
-  if (!availableStudents.length) {
+  if (!greenStudents.length) {
     elements.validatorHint.textContent =
-      "Aucun élève vert pour cette semaine : envoie au professeur. / لا يوجد طالب أخضر لهذا الأسبوع: أرسل للأستاذ.";
-    elements.validatorList.append(createValidatorOption({
-      label: "Professeur / الأستاذ",
-      value: TEACHER_VALIDATOR,
-      available: true,
-      selected: selectedValue === TEACHER_VALIDATOR,
-    }));
-    return;
+      "Aucun élève vert pour cette semaine. Le premier élève doit réciter au professeur, puis le professeur le met en vert. / لا يوجد طالب أخضر لهذا الأسبوع، أول طالب يسمع للأستاذ ثم يضعه الأستاذ بالأخضر.";
+  } else {
+    elements.validatorHint.textContent =
+      "Contacte un élève vert hors portail. Après la récitation, cet élève confirme ici. / اتصل بطالب أخضر خارج البوابة، وبعد التسميع يؤكد هنا.";
   }
-
-  elements.validatorHint.textContent =
-    "Choisis seulement un nom vert. Les rouges ne sont pas encore autorisés. / اختر اسمًا أخضر فقط، والأسماء الحمراء غير متاحة.";
 
   currentConfig.students.forEach((student) => {
-    if (student === currentStudent) return;
-    const available = availableStudents.includes(student);
-    elements.validatorList.append(createValidatorOption({
-      label: student,
-      value: student,
-      available,
-      selected: selectedValue === student,
-    }));
+    const green = isGreenStudent(currentConfig, student, weekId);
+    const item = document.createElement("div");
+    item.className = `validator-option ${green ? "available" : "unavailable"}`;
+    item.setAttribute("aria-disabled", String(!green));
+
+    const marker = document.createElement("span");
+    marker.className = "validator-marker";
+    marker.textContent = green ? "متاح / disponible" : "غير متاح / non disponible";
+
+    const name = document.createElement("strong");
+    name.textContent = student;
+
+    item.append(marker, name);
+    elements.validatorList.append(item);
   });
 }
 
-function createValidatorOption({ label, value, available, selected }) {
-  const wrapper = document.createElement("label");
-  wrapper.className = `validator-option ${available ? "available" : "unavailable"}`;
+function renderValidatorSelect(greenStudents, preferredValidator = "") {
+  elements.validatorSelect.innerHTML = "";
+  if (!greenStudents.length) {
+    elements.validatorSelect.append(emptyOption("Aucun élève vert / لا يوجد طالب أخضر"));
+    return;
+  }
 
-  const input = document.createElement("input");
-  input.type = "radio";
-  input.name = "validator";
-  input.value = value;
-  input.required = true;
-  input.disabled = !available;
-  input.checked = available && selected;
+  greenStudents.forEach((student) => {
+    const option = document.createElement("option");
+    option.value = student;
+    option.textContent = student;
+    elements.validatorSelect.append(option);
+  });
 
-  const name = document.createElement("span");
-  name.textContent = label;
+  if (greenStudents.includes(preferredValidator)) {
+    elements.validatorSelect.value = preferredValidator;
+  }
+}
 
-  wrapper.append(input, name);
-  return wrapper;
+function renderStudentSelect(waitingStudents, preferredStudent = "") {
+  elements.studentSelect.innerHTML = "";
+  if (!waitingStudents.length) {
+    elements.studentSelect.append(emptyOption("Tous les élèves sont déjà verts / كل الطلاب باللون الأخضر"));
+    return;
+  }
+
+  waitingStudents.forEach((student) => {
+    const option = document.createElement("option");
+    option.value = student;
+    option.textContent = student;
+    elements.studentSelect.append(option);
+  });
+
+  if (waitingStudents.includes(preferredStudent)) {
+    elements.studentSelect.value = preferredStudent;
+  }
+}
+
+function emptyOption(label) {
+  const option = document.createElement("option");
+  option.value = "";
+  option.textContent = label;
+  return option;
+}
+
+function setFormEnabled(enabled) {
+  elements.validatorSelect.disabled = !enabled;
+  elements.studentSelect.disabled = !enabled;
+  elements.note.disabled = !enabled;
+  elements.form.querySelector("button[type='submit']").disabled = !enabled;
 }
 
 async function submitResponse(event) {
   event.preventDefault();
-  const formData = new FormData(elements.form);
-  const status = formData.get("status");
-  const validator = formData.get("validator") || "";
-  if ((status === "done" || status === "makeup") && !validator) {
-    elements.result.textContent = "Choisis un nom vert avant d'envoyer. / اختر اسمًا أخضر قبل الإرسال.";
+  const validator = elements.validatorSelect.value;
+  const student = elements.studentSelect.value;
+
+  if (!validator || !student) {
+    elements.result.textContent =
+      "Il faut un élève vert et un élève à confirmer. / يجب اختيار طالب أخضر وطالب للتأكيد.";
     return;
   }
+
+  if (validator === student) {
+    elements.result.textContent =
+      "Un élève ne peut pas se confirmer lui-même. / لا يمكن للطالب أن يؤكد نفسه.";
+    return;
+  }
+
   const payload = {
-    student: elements.studentSelect.value,
+    student,
     weekId: elements.weekSelect.value,
-    status,
+    status: "done",
     validator,
-    validatorLabel: validatorLabel(validator),
+    validatorLabel: validator,
     note: elements.note.value.trim(),
   };
 
@@ -252,23 +269,18 @@ async function submitResponse(event) {
         body: JSON.stringify(payload),
       });
     }
-    elements.form.reset();
-    elements.weekSelect.value = payload.weekId;
-    renderValidators();
-    elements.result.textContent = "Réponse envoyée. Le professeur la verra dans son tableau. / تم إرسال الإجابة، سيطلع عليها الأستاذ في الجدول.";
+
+    elements.note.value = "";
+    elements.result.textContent =
+      "Confirmation envoyée au professeur. / تم إرسال التأكيد للأستاذ.";
+    await loadConfig();
   } catch (error) {
     elements.result.textContent = error.message;
   }
 }
 
 elements.form.addEventListener("submit", submitResponse);
-elements.studentSelect.addEventListener("change", () => renderValidators());
-elements.weekSelect.addEventListener("change", () => renderValidators());
-elements.form.addEventListener("change", (event) => {
-  if (event.target.name === "status") {
-    renderValidators();
-  }
-});
+elements.weekSelect.addEventListener("change", () => renderWeekState());
 loadConfig();
 window.addEventListener("focus", loadConfig);
 setInterval(loadConfig, 30000);
