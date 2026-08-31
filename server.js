@@ -292,6 +292,8 @@ async function handleApi(request, response, url) {
     const student = String(body.student || "").trim();
     const weekId = String(body.weekId || "").trim();
     const status = String(body.status || "").trim();
+    const validator = String(body.validator || "").trim();
+    const validatorLabel = String(body.validatorLabel || "").trim();
     const note = String(body.note || "").trim();
 
     if (!student || !weekId || !["done", "makeup", "missed"].includes(status)) {
@@ -308,6 +310,8 @@ async function handleApi(request, response, url) {
       student,
       weekId,
       status,
+      validator,
+      validatorLabel,
       note,
       applied: false,
       createdAt: new Date().toISOString(),

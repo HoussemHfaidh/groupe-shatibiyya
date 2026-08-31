@@ -2,11 +2,16 @@ const elements = {
   form: document.querySelector("#submissionForm"),
   studentSelect: document.querySelector("#studentSelect"),
   weekSelect: document.querySelector("#studentWeekSelect"),
+  validatorChoice: document.querySelector("#validatorChoice"),
+  validatorHint: document.querySelector("#validatorHint"),
+  validatorList: document.querySelector("#validatorList"),
   note: document.querySelector("#studentNote"),
   result: document.querySelector("#studentResult"),
 };
 
 const FIREBASE_URL_KEY = "shatibiyya-firebase-url";
+const TEACHER_VALIDATOR = "__teacher__";
+let currentConfig = null;
 
 function weekLabel(week) {
   return `من ${week.start} إلى ${week.end}`;
@@ -19,6 +24,35 @@ function formatDate(dateString) {
     month: "2-digit",
     year: "numeric",
   }).format(new Date(`${dateString}T12:00:00`));
+}
+
+function normalizeArabic(value) {
+  return value
+    .toString()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u064b-\u065f\u0670]/g, "")
+    .replace(/[إأآا]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+function studentId(name) {
+  return normalizeArabic(name).replace(/\s+/g, "-");
+}
+
+function statusKey(studentName, weekId) {
+  return `${studentId(studentName)}__${weekId}`;
+}
+
+function getStatus(config, studentName, weekId) {
+  return config?.statuses?.[statusKey(studentName, weekId)] || "";
+}
+
+function isValidatorAvailable(config, studentName, weekId) {
+  return getStatus(config, studentName, weekId) === "done";
 }
 
 function getFirebaseUrl() {
@@ -62,12 +96,14 @@ async function loadConfig() {
   try {
     const previousStudent = elements.studentSelect.value;
     const previousWeek = elements.weekSelect.value;
+    const previousValidator = new FormData(elements.form).get("validator");
     const config = getFirebaseUrl()
       ? await firebaseRequest("config")
       : await localRequest("/api/config");
     if (!config?.students?.length || !config?.weeks?.length) {
       throw new Error("Configuration absente. / الإعدادات غير موجودة.");
     }
+    currentConfig = config;
     renderOptions(config);
     if (config.students.includes(previousStudent)) {
       elements.studentSelect.value = previousStudent;
@@ -75,6 +111,7 @@ async function loadConfig() {
     if (config.weeks.some((week) => week.id === previousWeek)) {
       elements.weekSelect.value = previousWeek;
     }
+    renderValidators(previousValidator);
     elements.result.textContent = "Portail prêt. / البوابة جاهزة.";
   } catch (error) {
     elements.result.textContent =
@@ -103,13 +140,98 @@ function renderOptions(config) {
   }
 }
 
+function selectedStatus() {
+  return new FormData(elements.form).get("status") || "";
+}
+
+function validatorLabel(value) {
+  return value === TEACHER_VALIDATOR ? "Professeur / الأستاذ" : value;
+}
+
+function renderValidators(preferredValidator = "") {
+  if (!currentConfig || !elements.validatorList) return;
+
+  const weekId = elements.weekSelect.value;
+  const currentStudent = elements.studentSelect.value;
+  const status = selectedStatus();
+  const needsValidator = status === "done" || status === "makeup";
+
+  elements.validatorChoice.disabled = !needsValidator;
+  elements.validatorList.innerHTML = "";
+
+  if (!needsValidator) {
+    elements.validatorHint.textContent = "Pas nécessaire si tu n'as pas récité. / غير مطلوب إذا لم تسمع.";
+    return;
+  }
+
+  const availableStudents = currentConfig.students.filter((student) => (
+    student !== currentStudent && isValidatorAvailable(currentConfig, student, weekId)
+  ));
+  const selectedValue = availableStudents.includes(preferredValidator)
+    ? preferredValidator
+    : availableStudents[0] || TEACHER_VALIDATOR;
+
+  if (!availableStudents.length) {
+    elements.validatorHint.textContent =
+      "Aucun élève vert pour cette semaine : envoie au professeur. / لا يوجد طالب أخضر لهذا الأسبوع: أرسل للأستاذ.";
+    elements.validatorList.append(createValidatorOption({
+      label: "Professeur / الأستاذ",
+      value: TEACHER_VALIDATOR,
+      available: true,
+      selected: selectedValue === TEACHER_VALIDATOR,
+    }));
+    return;
+  }
+
+  elements.validatorHint.textContent =
+    "Choisis seulement un nom vert. Les rouges ne sont pas encore autorisés. / اختر اسمًا أخضر فقط، والأسماء الحمراء غير متاحة.";
+
+  currentConfig.students.forEach((student) => {
+    if (student === currentStudent) return;
+    const available = availableStudents.includes(student);
+    elements.validatorList.append(createValidatorOption({
+      label: student,
+      value: student,
+      available,
+      selected: selectedValue === student,
+    }));
+  });
+}
+
+function createValidatorOption({ label, value, available, selected }) {
+  const wrapper = document.createElement("label");
+  wrapper.className = `validator-option ${available ? "available" : "unavailable"}`;
+
+  const input = document.createElement("input");
+  input.type = "radio";
+  input.name = "validator";
+  input.value = value;
+  input.required = true;
+  input.disabled = !available;
+  input.checked = available && selected;
+
+  const name = document.createElement("span");
+  name.textContent = label;
+
+  wrapper.append(input, name);
+  return wrapper;
+}
+
 async function submitResponse(event) {
   event.preventDefault();
   const formData = new FormData(elements.form);
+  const status = formData.get("status");
+  const validator = formData.get("validator") || "";
+  if ((status === "done" || status === "makeup") && !validator) {
+    elements.result.textContent = "Choisis un nom vert avant d'envoyer. / اختر اسمًا أخضر قبل الإرسال.";
+    return;
+  }
   const payload = {
     student: elements.studentSelect.value,
     weekId: elements.weekSelect.value,
-    status: formData.get("status"),
+    status,
+    validator,
+    validatorLabel: validatorLabel(validator),
     note: elements.note.value.trim(),
   };
 
@@ -132,6 +254,7 @@ async function submitResponse(event) {
     }
     elements.form.reset();
     elements.weekSelect.value = payload.weekId;
+    renderValidators();
     elements.result.textContent = "Réponse envoyée. Le professeur la verra dans son tableau. / تم إرسال الإجابة، سيطلع عليها الأستاذ في الجدول.";
   } catch (error) {
     elements.result.textContent = error.message;
@@ -139,6 +262,13 @@ async function submitResponse(event) {
 }
 
 elements.form.addEventListener("submit", submitResponse);
+elements.studentSelect.addEventListener("change", () => renderValidators());
+elements.weekSelect.addEventListener("change", () => renderValidators());
+elements.form.addEventListener("change", (event) => {
+  if (event.target.name === "status") {
+    renderValidators();
+  }
+});
 loadConfig();
 window.addEventListener("focus", loadConfig);
 setInterval(loadConfig, 30000);

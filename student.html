@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Portail élève - بوابة الطالب</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260831-validators" />
   </head>
   <body class="student-page">
     <main class="student-shell">
@@ -29,6 +29,12 @@
             <span>Semaine / الأسبوع</span>
             <select id="studentWeekSelect" required></select>
           </label>
+
+          <fieldset id="validatorChoice" class="validator-choice">
+            <legend>À qui as-tu récité ? / لمن سمّعت؟</legend>
+            <p id="validatorHint" class="validator-hint"></p>
+            <div id="validatorList" class="validator-list"></div>
+          </fieldset>
 
           <fieldset class="status-choice">
             <legend>État / الحالة</legend>
@@ -62,6 +68,6 @@
     </main>
 
     <script src="config.js?v=20260606-firebase-default"></script>
-    <script src="student.js?v=20260830-bilingual-ui"></script>
+    <script src="student.js?v=20260831-validators"></script>
   </body>
 </html>

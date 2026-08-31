@@ -729,6 +729,12 @@ function renderSubmissions() {
       : statusLabel(appliedStatus);
 
     item.append(name, pill, meta);
+    if (submission.validatorLabel || submission.validator) {
+      const validator = document.createElement("p");
+      validator.className = "submission-meta";
+      validator.textContent = `A récité à / سمّع عند : ${submission.validatorLabel || submission.validator}`;
+      item.append(validator);
+    }
     if (submission.note) {
       const note = document.createElement("p");
       note.className = "submission-meta";

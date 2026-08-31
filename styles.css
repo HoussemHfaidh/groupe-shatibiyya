@@ -594,6 +594,67 @@ textarea {
   width: auto;
 }
 
+.validator-choice {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 12px;
+}
+
+.validator-choice legend {
+  color: #33435c;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 6px;
+}
+
+.validator-hint {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.validator-list {
+  display: grid;
+  gap: 8px;
+}
+
+.validator-option {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  direction: rtl;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  min-height: 42px;
+  padding: 9px 10px;
+}
+
+.validator-option input {
+  min-height: 0;
+  width: auto;
+}
+
+.validator-option.available {
+  background: #ecf9e4;
+  border-color: #8bd34a;
+  color: #244f15;
+}
+
+.validator-option.unavailable {
+  background: #fff3f5;
+  border-color: #f6bac3;
+  color: #81333d;
+  opacity: 0.78;
+}
+
+.validator-option.unavailable span {
+  text-decoration: line-through;
+}
+
 @media (max-width: 1050px) {
   .app-header,
   .layout,
