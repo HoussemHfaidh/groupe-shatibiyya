@@ -150,10 +150,10 @@ function renderAvailabilityList(greenStudents, weekId) {
 
   if (!greenStudents.length) {
     elements.validatorHint.textContent =
-      "Aucun élève vert pour cette semaine. Le premier élève doit réciter au professeur, puis le professeur le met en vert. / لا يوجد طالب أخضر لهذا الأسبوع، أول طالب يسمع للأستاذ ثم يضعه الأستاذ بالأخضر.";
+      "Aucun élève déjà validé pour cette semaine. Le premier élève doit réciter au professeur, puis le professeur le valide. / لا يوجد طالب معتمد لهذا الأسبوع، أول طالب يسمع للأستاذ ثم يعتمده الأستاذ.";
   } else {
     elements.validatorHint.textContent =
-      "Contacte un élève vert hors portail. Après la récitation, cet élève confirme ici. / اتصل بطالب أخضر خارج البوابة، وبعد التسميع يؤكد هنا.";
+      "Contacte un élève déjà validé hors portail. Après la récitation, cet élève confirme ici. / اتصل بطالب معتمد خارج البوابة، وبعد التسميع يؤكد هنا.";
   }
 
   currentConfig.students.forEach((student) => {
@@ -164,7 +164,7 @@ function renderAvailabilityList(greenStudents, weekId) {
 
     const marker = document.createElement("span");
     marker.className = "validator-marker";
-    marker.textContent = green ? "متاح / disponible" : "غير متاح / non disponible";
+    marker.textContent = green ? "معتمد / validé" : "غير معتمد / pas encore validé";
 
     const name = document.createElement("strong");
     name.textContent = student;
@@ -177,7 +177,7 @@ function renderAvailabilityList(greenStudents, weekId) {
 function renderValidatorSelect(greenStudents, preferredValidator = "") {
   elements.validatorSelect.innerHTML = "";
   if (!greenStudents.length) {
-    elements.validatorSelect.append(emptyOption("Aucun élève vert / لا يوجد طالب أخضر"));
+    elements.validatorSelect.append(emptyOption("Aucun élève déjà validé / لا يوجد طالب معتمد"));
     return;
   }
 
@@ -196,7 +196,7 @@ function renderValidatorSelect(greenStudents, preferredValidator = "") {
 function renderStudentSelect(waitingStudents, preferredStudent = "") {
   elements.studentSelect.innerHTML = "";
   if (!waitingStudents.length) {
-    elements.studentSelect.append(emptyOption("Tous les élèves sont déjà verts / كل الطلاب باللون الأخضر"));
+    elements.studentSelect.append(emptyOption("Tous les élèves sont déjà validés / كل الطلاب معتمدون"));
     return;
   }
 
@@ -233,7 +233,7 @@ async function submitResponse(event) {
 
   if (!validator || !student) {
     elements.result.textContent =
-      "Il faut un élève vert et un élève à confirmer. / يجب اختيار طالب أخضر وطالب للتأكيد.";
+      "Il faut un élève déjà validé et un élève à confirmer. / يجب اختيار طالب معتمد وطالب للتأكيد.";
     return;
   }
 
