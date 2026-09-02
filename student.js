@@ -18,7 +18,7 @@ function weekLabel(week) {
 
 function formatDate(dateString) {
   if (!dateString) return "";
-  return new Intl.DateTimeFormat("fr-FR", {
+  return new Intl.DateTimeFormat("ar", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -102,7 +102,7 @@ async function firebaseRequest(path, options = {}) {
     ...options,
   });
   if (!response.ok) {
-    throw new Error("Firebase n'a pas accepté la requête. / لم يقبل Firebase الطلب.");
+    throw new Error("لم يقبل Firebase الطلب.");
   }
   return response.json();
 }
@@ -114,7 +114,7 @@ async function localRequest(path, options = {}) {
   });
   const payload = await response.json();
   if (!response.ok) {
-    throw new Error(payload.error || "Erreur serveur local. / خطأ في الخادم المحلي.");
+    throw new Error(payload.error || "خطأ في الخادم المحلي.");
   }
   return payload;
 }
@@ -129,16 +129,16 @@ async function loadConfig() {
       : await localRequest("/api/config");
 
     if (!config?.students?.length || !config?.weeks?.length) {
-      throw new Error("Configuration absente. / الإعدادات غير موجودة.");
+      throw new Error("الإعدادات غير موجودة.");
     }
 
     currentConfig = config;
     renderWeeks(config, previousWeek);
     renderWeekState(previousValidator, previousStudent);
-    elements.result.textContent = "Portail prêt. / البوابة جاهزة.";
+    elements.result.textContent = "البوابة جاهزة.";
   } catch {
     elements.result.textContent =
-      "Impossible de charger le portail. Vérifiez le lien envoyé par le professeur. / تعذر تحميل البوابة، تحقق من رابط الأستاذ.";
+      "تعذر تحميل البوابة، تحقق من رابط الأستاذ.";
   }
 }
 
@@ -178,10 +178,10 @@ function renderAvailabilityList(greenStudents, weekId) {
 
   if (!greenStudents.length) {
     elements.validatorHint.textContent =
-      "Aucun élève déjà validé pour cette semaine. Le premier élève doit réciter au professeur, puis le professeur le valide. / لا يوجد طالب معتمد لهذا الأسبوع، أول طالب يسمع للأستاذ ثم يعتمده الأستاذ.";
+      "لا يوجد طالب معتمد لهذا الأسبوع. أول طالب يسمع للأستاذ ثم يعتمده الأستاذ.";
   } else {
     elements.validatorHint.textContent =
-      "Contacte un élève déjà validé hors portail. Après la récitation, cet élève confirme ici. / اتصل بطالب معتمد خارج البوابة، وبعد التسميع يؤكد هنا.";
+      "اتصل بطالب معتمد خارج البوابة، وبعد التسميع يؤكد هنا.";
   }
 
   currentConfig.students.forEach((student) => {
@@ -192,7 +192,7 @@ function renderAvailabilityList(greenStudents, weekId) {
 
     const marker = document.createElement("span");
     marker.className = "validator-marker";
-    marker.textContent = green ? "معتمد / validé" : "غير معتمد / pas encore validé";
+    marker.textContent = green ? "معتمد" : "غير معتمد";
 
     const name = document.createElement("strong");
     name.textContent = student;
@@ -205,7 +205,7 @@ function renderAvailabilityList(greenStudents, weekId) {
 function renderValidatorSelect(greenStudents, preferredValidator = "") {
   elements.validatorSelect.innerHTML = "";
   if (!greenStudents.length) {
-    elements.validatorSelect.append(emptyOption("Aucun élève déjà validé / لا يوجد طالب معتمد"));
+    elements.validatorSelect.append(emptyOption("لا يوجد طالب معتمد"));
     return;
   }
 
@@ -224,7 +224,7 @@ function renderValidatorSelect(greenStudents, preferredValidator = "") {
 function renderStudentSelect(waitingStudents, preferredStudent = "") {
   elements.studentSelect.innerHTML = "";
   if (!waitingStudents.length) {
-    elements.studentSelect.append(emptyOption("Tous les élèves sont déjà validés / كل الطلاب معتمدون"));
+    elements.studentSelect.append(emptyOption("كل الطلاب معتمدون"));
     return;
   }
 
@@ -289,13 +289,13 @@ async function submitResponse(event) {
 
   if (!validator || !student) {
     elements.result.textContent =
-      "Il faut un élève déjà validé et un élève à confirmer. / يجب اختيار طالب معتمد وطالب للتأكيد.";
+      "يجب اختيار طالب معتمد وطالب للتأكيد.";
     return;
   }
 
   if (validator === student) {
     elements.result.textContent =
-      "Un élève ne peut pas se confirmer lui-même. / لا يمكن للطالب أن يؤكد نفسه.";
+      "لا يمكن للطالب أن يؤكد نفسه.";
     return;
   }
 
@@ -308,7 +308,7 @@ async function submitResponse(event) {
     note: elements.note.value.trim(),
   };
 
-  elements.result.textContent = "Envoi en cours... / جار الإرسال...";
+  elements.result.textContent = "جار الإرسال...";
   try {
     const createdAt = new Date().toISOString();
     const appliedStatus = confirmationStatus(weekId, createdAt);
@@ -343,7 +343,7 @@ async function submitResponse(event) {
 
     elements.note.value = "";
     elements.result.textContent =
-      "Confirmation envoyée au professeur. / تم إرسال التأكيد للأستاذ.";
+      "تم إرسال التأكيد للأستاذ.";
     await loadConfig();
   } catch (error) {
     elements.result.textContent = error.message;

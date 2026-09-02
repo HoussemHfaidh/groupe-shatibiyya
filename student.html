@@ -1,62 +1,57 @@
 <!doctype html>
-<html lang="fr">
+<html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Portail élève - بوابة الطالب</title>
-    <link rel="stylesheet" href="styles.css?v=20260831-responsive" />
+    <title>بوابة الطالب</title>
+    <link rel="stylesheet" href="styles.css?v=20260902-arabic-only" />
   </head>
   <body class="student-page">
     <main class="student-shell">
       <section class="panel student-card">
         <p class="eyebrow">الشاطبية - حرز الأماني</p>
-        <h1>Déclaration de mémorisation</h1>
+        <h1>تأكيد التسميع</h1>
         <p class="subtitle">
-          Choisis la semaine, regarde les élèves déjà validés que tu peux contacter,
-          puis la personne contactée confirme ta récitation.
-          <span class="arabic-line">
-            اختر الأسبوع، ثم انظر إلى الطلاب الذين تم اعتمادهم، وبعد التسميع يؤكد الطالب الذي سمعت عنده.
-          </span>
+          اختر الأسبوع، ثم انظر إلى الطلاب الذين تم اعتمادهم، وبعد التسميع يؤكد الطالب الذي سمعت عنده.
         </p>
 
         <form id="submissionForm" class="student-form">
           <label class="field">
-            <span>Semaine / الأسبوع</span>
+            <span>الأسبوع</span>
             <select id="studentWeekSelect" required></select>
           </label>
 
           <fieldset id="validatorChoice" class="validator-choice">
-            <legend>Élèves disponibles / الطلاب المتاحون</legend>
+            <legend>الطلاب المتاحون</legend>
             <p id="validatorHint" class="validator-hint"></p>
             <div id="validatorList" class="validator-list"></div>
           </fieldset>
 
           <label class="field">
-            <span>Je suis l'élève déjà validé qui confirme / أنا الطالب المعتمد الذي يؤكد</span>
+            <span>أنا الطالب المعتمد الذي يؤكد</span>
             <select id="validatorSelect" required></select>
           </label>
 
           <label class="field">
-            <span>L'élève qui a récité chez moi / الطالب الذي سمّع عندي</span>
+            <span>الطالب الذي سمّع عندي</span>
             <select id="studentSelect" required></select>
           </label>
 
           <label class="field">
-            <span>Note optionnelle / ملاحظة اختيارية</span>
-            <textarea id="studentNote" rows="3" placeholder="Exemple / مثال : récitation confirmée"></textarea>
+            <span>ملاحظة اختيارية</span>
+            <textarea id="studentNote" rows="3" placeholder="مثال: تم تأكيد التسميع"></textarea>
           </label>
 
-          <button class="primary" type="submit">Confirmer / تأكيد التسميع</button>
+          <button class="primary" type="submit">تأكيد التسميع</button>
         </form>
 
         <div id="studentResult" class="result-box" aria-live="polite">
-          Chargement du portail...
-          <span class="arabic-line">جار تحميل البوابة...</span>
+          جار تحميل البوابة...
         </div>
       </section>
     </main>
 
     <script src="config.js?v=20260606-firebase-default"></script>
-    <script src="student.js?v=20260831-direct-validation"></script>
+    <script src="student.js?v=20260902-arabic-only"></script>
   </body>
 </html>

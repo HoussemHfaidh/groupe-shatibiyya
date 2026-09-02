@@ -122,7 +122,7 @@ async function loadStore() {
     };
   } catch (error) {
     if (error.code !== "ENOENT") {
-      console.warn("Impossible de lire data/store.json, démarrage avec les valeurs par défaut.");
+      console.warn("تعذر قراءة data/store.json، سيتم التشغيل بالقيم الافتراضية.");
     }
     await saveStore();
   }
@@ -229,7 +229,7 @@ function readBody(request) {
       body += chunk;
       if (body.length > 1_000_000) {
         request.destroy();
-        reject(new Error("Payload trop volumineux."));
+        reject(new Error("البيانات المرسلة كبيرة جدًا."));
       }
     });
     request.on("end", () => {
@@ -240,7 +240,7 @@ function readBody(request) {
       try {
         resolve(JSON.parse(body));
       } catch {
-        reject(new Error("JSON invalide."));
+        reject(new Error("صيغة JSON غير صحيحة."));
       }
     });
     request.on("error", reject);
@@ -262,7 +262,7 @@ async function handleApi(request, response, url) {
   if (request.method === "PUT" && url.pathname === "/api/config") {
     const body = await readBody(request);
     if (!Array.isArray(body.students) || !Array.isArray(body.weeks)) {
-      sendJson(response, 400, { error: "Configuration invalide." });
+      sendJson(response, 400, { error: "الإعدادات غير صحيحة." });
       return;
     }
     store.students = body.students.map(String).filter(Boolean);
@@ -311,11 +311,11 @@ async function handleApi(request, response, url) {
     const applied = Boolean(body.applied);
 
     if (!student || !weekId || !["done", "makeup", "missed"].includes(status)) {
-      sendJson(response, 400, { error: "Réponse incomplète." });
+      sendJson(response, 400, { error: "الإجابة غير مكتملة." });
       return;
     }
     if (!store.students.includes(student) || !store.weeks.some((week) => week.id === weekId)) {
-      sendJson(response, 400, { error: "Élève ou semaine inconnue." });
+      sendJson(response, 400, { error: "الطالب أو الأسبوع غير معروف." });
       return;
     }
 
@@ -351,7 +351,7 @@ async function handleApi(request, response, url) {
   if (request.method === "PATCH" && applyMatch) {
     const submission = store.submissions.find((item) => item.id === applyMatch[1]);
     if (!submission) {
-      sendJson(response, 404, { error: "Réponse introuvable." });
+      sendJson(response, 404, { error: "الإجابة غير موجودة." });
       return;
     }
     submission.applied = true;
@@ -368,7 +368,7 @@ async function handleApi(request, response, url) {
     return;
   }
 
-  sendJson(response, 404, { error: "API inconnue." });
+  sendJson(response, 404, { error: "واجهة API غير معروفة." });
 }
 
 async function serveFile(request, response, url) {
@@ -389,7 +389,7 @@ async function serveFile(request, response, url) {
     response.end(content);
   } catch {
     response.writeHead(404, { "Content-Type": "text/plain;charset=utf-8" });
-    response.end("Fichier introuvable.");
+    response.end("الملف غير موجود.");
   }
 }
 
@@ -404,13 +404,13 @@ async function main() {
         await serveFile(request, response, url);
       }
     } catch (error) {
-      sendJson(response, 500, { error: error.message || "Erreur serveur." });
+      sendJson(response, 500, { error: error.message || "خطأ في الخادم." });
     }
   });
 
   server.listen(PORT, "::", () => {
-    console.log(`Application professeur : http://127.0.0.1:${PORT}/`);
-    console.log(`Portail eleves       : http://127.0.0.1:${PORT}/student.html`);
+    console.log(`صفحة الأستاذ : http://127.0.0.1:${PORT}/`);
+    console.log(`بوابة الطلاب : http://127.0.0.1:${PORT}/student.html`);
   });
 }
 

@@ -195,14 +195,14 @@ function firebasePath(path) {
 
 async function firebaseRequest(path, options = {}) {
   if (!getFirebaseUrl()) {
-    throw new Error("Aucune URL Firebase configurée.");
+    throw new Error("لم يتم ضبط رابط Firebase.");
   }
   const response = await fetch(firebasePath(path), {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
   if (!response.ok) {
-    throw new Error("Firebase n'a pas accepté la requête.");
+    throw new Error("لم يقبل Firebase الطلب.");
   }
   return response.json();
 }
@@ -214,7 +214,7 @@ async function localRequest(path, options = {}) {
   });
   const payload = await response.json();
   if (!response.ok) {
-    throw new Error(payload.error || "Erreur serveur local.");
+    throw new Error(payload.error || "خطأ في الخادم المحلي.");
   }
   return payload;
 }
@@ -242,9 +242,9 @@ async function loadConfigFromBackend() {
     } else if (getFirebaseUrl()) {
       await syncConfigNow();
     }
-    updateBackendUi("Configuration chargée. / تم تحميل الإعدادات.");
+    updateBackendUi("تم تحميل الإعدادات.");
   } catch (error) {
-    updateBackendUi(getFirebaseUrl() ? error.message : "Mode local sans serveur de données. / وضع محلي بدون خادم.");
+    updateBackendUi(getFirebaseUrl() ? error.message : "وضع محلي بدون خادم بيانات.");
   }
 }
 
@@ -274,9 +274,9 @@ async function syncConfigNow() {
         body: JSON.stringify(config),
       });
     }
-    updateBackendUi("Élèves et semaines synchronisés. / تم حفظ الطلاب والأسابيع.");
+    updateBackendUi("تم حفظ الطلاب والأسابيع.");
   } catch {
-    updateBackendUi(getFirebaseUrl() ? "Synchronisation Firebase impossible. / تعذرت المزامنة مع Firebase." : "Mode navigateur local. / وضع محلي.");
+    updateBackendUi(getFirebaseUrl() ? "تعذرت المزامنة مع Firebase." : "وضع محلي.");
   }
 }
 
@@ -295,7 +295,7 @@ async function loadSubmissions() {
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     renderSubmissions();
-    updateBackendUi(`${state.submissions.length} réponse(s) récupérée(s). / تم استرجاع ${state.submissions.length} إجابة.`);
+    updateBackendUi(`تم استرجاع ${state.submissions.length} إجابة.`);
   } catch (error) {
     updateBackendUi(error.message);
   }
@@ -324,8 +324,8 @@ function updateBackendUi(message = "") {
     elements.apiUrlInput.value = getFirebaseUrl();
   }
   const source = getFirebaseUrl()
-    ? "Source : Firebase en ligne. / المصدر: Firebase"
-    : "Source : navigateur local. Ajoutez l'URL Firebase. / المصدر: المتصفح المحلي، أضف رابط Firebase.";
+    ? "المصدر: Firebase."
+    : "المصدر: المتصفح المحلي. أضف رابط Firebase.";
   if (elements.syncStatus) {
     elements.syncStatus.textContent = message ? `${source} ${message}` : source;
   }
@@ -393,7 +393,7 @@ function weekLabel(week) {
 
 function formatDate(dateString) {
   if (!dateString) return "";
-  return new Intl.DateTimeFormat("fr-FR", {
+  return new Intl.DateTimeFormat("ar", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -480,10 +480,10 @@ function statusMark(status) {
 }
 
 function statusLabel(status) {
-  if (status === "done") return "fait / تم";
-  if (status === "makeup") return "rattrapage / retard / استدراك";
-  if (status === "missed") return "non fait / لم يتم";
-  return "vide / فارغ";
+  if (status === "done") return "تم";
+  if (status === "makeup") return "استدراك";
+  if (status === "missed") return "لم يتم";
+  return "فارغ";
 }
 
 function studentCompletion(studentName) {
@@ -620,7 +620,7 @@ function renderStudentList() {
     const remove = document.createElement("button");
     remove.type = "button";
     remove.textContent = "×";
-    remove.title = `Supprimer ${student}`;
+    remove.title = `حذف ${student}`;
     remove.addEventListener("click", () => removeStudent(student));
 
     chip.append(name, remove);
@@ -674,7 +674,7 @@ function renderChain() {
   elements.readingChain.innerHTML = "";
   if (!order.length) {
     const item = document.createElement("li");
-    item.textContent = "Aucun élève prêt pour cette semaine. / لا يوجد طالب جاهز لهذا الأسبوع.";
+    item.textContent = "لا يوجد طالب جاهز لهذا الأسبوع.";
     elements.readingChain.append(item);
     return;
   }
@@ -685,8 +685,8 @@ function renderChain() {
     reader.textContent = student;
     const target = document.createElement("span");
     target.textContent = index === 0
-      ? " lit au professeur / يسمع للأستاذ"
-      : ` lit à ${order[index - 1]} / يسمع لـ ${order[index - 1]}`;
+      ? " يسمع للأستاذ"
+      : ` يسمع لـ ${order[index - 1]}`;
     item.append(reader, target);
     elements.readingChain.append(item);
   });
@@ -701,7 +701,7 @@ function renderSubmissions() {
   if (!submissions.length) {
     const empty = document.createElement("div");
     empty.className = "submission-item";
-    empty.textContent = "Aucune réponse reçue pour cette semaine. / لا توجد إجابات لهذا الأسبوع.";
+    empty.textContent = "لا توجد إجابات لهذا الأسبوع.";
     elements.submissionList.append(empty);
     renderNoReplyList();
     return;
@@ -717,27 +717,27 @@ function renderSubmissions() {
     const meta = document.createElement("div");
     meta.className = "submission-meta";
     const createdAt = submission.createdAt
-      ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short" }).format(new Date(submission.createdAt))
-      : "date inconnue / تاريخ غير معروف";
+      ? new Intl.DateTimeFormat("ar", { dateStyle: "short", timeStyle: "short" }).format(new Date(submission.createdAt))
+      : "تاريخ غير معروف";
     const late = isLateSubmission(submission);
     meta.textContent = [
       createdAt,
-      late ? "en retard / متأخر" : "",
-      submission.applied ? "déjà appliquée / تم تطبيقها" : "",
+      late ? "متأخر" : "",
+      submission.applied ? "تم تطبيقها" : "",
     ].filter(Boolean).join(" - ");
 
     const pill = document.createElement("span");
     const appliedStatus = effectiveSubmissionStatus(submission);
     pill.className = `status-pill status-${appliedStatus}`;
     pill.textContent = late && submission.status === "done"
-      ? "retard / متأخر"
+      ? "متأخر"
       : statusLabel(appliedStatus);
 
     item.append(name, pill, meta);
     if (submission.validatorLabel || submission.validator) {
       const validator = document.createElement("p");
       validator.className = "submission-meta";
-      validator.textContent = `Confirmé par / أكّده : ${submission.validatorLabel || submission.validator}`;
+      validator.textContent = `أكّده: ${submission.validatorLabel || submission.validator}`;
       item.append(validator);
     }
     if (submission.note) {
@@ -772,11 +772,11 @@ function renderNoReplyList() {
   }
 
   elements.noReplyList.classList.add("visible");
-  elements.noReplyList.innerHTML = `<strong>Sans réponse / بدون إجابة :</strong> ${missing.join("، ")}`;
+  elements.noReplyList.innerHTML = `<strong>بدون إجابة:</strong> ${missing.join("، ")}`;
 }
 
 function renderReportDate() {
-  const today = new Intl.DateTimeFormat("fr-FR", {
+  const today = new Intl.DateTimeFormat("ar", {
     dateStyle: "full",
   }).format(new Date());
   elements.reportDate.textContent = today;
@@ -913,7 +913,7 @@ function applyChatAnalysis() {
   const raw = elements.chatInput.value.trim();
 
   if (!weekId || !raw) {
-    elements.analysisResult.textContent = "Choisissez une semaine et collez quelques messages. / اختر أسبوعًا والصق بعض الرسائل.";
+    elements.analysisResult.textContent = "اختر أسبوعًا والصق بعض الرسائل.";
     return;
   }
 
@@ -949,7 +949,7 @@ function applyChatAnalysis() {
 
   if (!updates.length) {
     elements.analysisResult.textContent =
-      `${messages.length} message(s) lu(s), mais aucun statut reconnu. / تمت قراءة ${messages.length} رسالة، لكن لم يتم التعرف على حالة.`;
+      `تمت قراءة ${messages.length} رسالة، لكن لم يتم التعرف على حالة.`;
     return;
   }
 
@@ -959,9 +959,9 @@ function applyChatAnalysis() {
   }, {});
 
   elements.analysisResult.innerHTML = [
-    `${messages.length} message(s) lu(s). / تمت قراءة ${messages.length} رسالة.`,
-    `${updates.length} mise(s) à jour appliquée(s). / تم تطبيق ${updates.length} تحديث.`,
-    `Fait / تم : ${summary.done || 0}, retard / استدراك : ${summary.makeup || 0}, non fait / لم يتم : ${summary.missed || 0}.`,
+    `تمت قراءة ${messages.length} رسالة.`,
+    `تم تطبيق ${updates.length} تحديث.`,
+    `تم: ${summary.done || 0}، استدراك: ${summary.makeup || 0}، لم يتم: ${summary.missed || 0}.`,
   ].join("<br>");
 }
 
@@ -1003,7 +1003,7 @@ async function applySubmissions() {
   await syncConfigNow();
   render();
   updateBackendUi(
-    `${applicable.length} réponse(s) appliquée(s). / تم تطبيق ${applicable.length} إجابة. ${missing.length} sans-réponse. / ${missing.length} بدون إجابة.`
+    `تم تطبيق ${applicable.length} إجابة. بدون إجابة: ${missing.length}.`
   );
 }
 
@@ -1011,19 +1011,19 @@ function markNoReplyAsMissed() {
   const weekId = elements.weekSelect.value;
   const missing = studentsWithoutReply();
   if (!missing.length) {
-    updateBackendUi("Aucun élève sans réponse à marquer. / لا يوجد طالب بدون إجابة.");
+    updateBackendUi("لا يوجد طالب بدون إجابة.");
     return;
   }
 
   const confirmed = window.confirm(
-    `Marquer ${missing.length} élève(s) sans réponse en rouge ? / هل تريد تحديد ${missing.length} طالب بدون إجابة باللون الأحمر؟`
+    `هل تريد تحديد ${missing.length} طالب بدون إجابة باللون الأحمر؟`
   );
   if (!confirmed) return;
 
   missing.forEach((student) => setStatus(student, weekId, "missed"));
   saveState();
   render();
-  updateBackendUi(`${missing.length} élève(s) sans réponse marqué(s). / تم تحديد ${missing.length} طالب بدون إجابة.`);
+  updateBackendUi(`تم تحديد ${missing.length} طالب بدون إجابة.`);
 }
 
 function updateWeekSettings() {
@@ -1033,7 +1033,7 @@ function updateWeekSettings() {
   });
   saveState();
   render();
-  updateBackendUi("Réglage de semaine synchronisé. / تم حفظ إعداد الأسبوع.");
+  updateBackendUi("تم حفظ إعداد الأسبوع.");
 }
 
 function addStudent(event) {
@@ -1051,7 +1051,7 @@ function addStudent(event) {
 }
 
 function removeStudent(studentName) {
-  const confirmed = window.confirm(`Supprimer ${studentName} du tableau ? / هل تريد حذف ${studentName} من الجدول؟`);
+  const confirmed = window.confirm(`هل تريد حذف ${studentName} من الجدول؟`);
   if (!confirmed) return;
 
   state.students = state.students.filter((student) => student !== studentName);
@@ -1109,7 +1109,7 @@ function createNextWeek() {
   elements.weekDate.value = "";
   render(id);
   loadSubmissions();
-  updateBackendUi(`Semaine suivante créée : ${weekLabel({ start, end })} - ${formatDate(date)}. / تم إنشاء الأسبوع التالي.`);
+  updateBackendUi(`تم إنشاء الأسبوع التالي: ${weekLabel({ start, end })} - ${formatDate(date)}.`);
 }
 
 function exportCsv() {
@@ -1152,7 +1152,7 @@ async function exportImage(share = false) {
 
   const imageBlob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png", 0.95));
   if (!imageBlob) {
-    throw new Error("Impossible de générer l'image du tableau.");
+    throw new Error("تعذر إنشاء صورة الجدول.");
   }
   const filename = `suivi-shatibiyya-${new Date().toISOString().slice(0, 10)}.png`;
 
@@ -1161,8 +1161,8 @@ async function exportImage(share = false) {
     if (navigator.canShare({ files: [file] })) {
       await navigator.share({
         files: [file],
-        title: "Suivi Shaṭibiyya",
-        text: "Tableau hebdomadaire du groupe.",
+        title: "متابعة الشاطبية",
+        text: "الجدول الأسبوعي للمجموعة.",
       });
       return;
     }
@@ -1253,11 +1253,11 @@ function drawTitle(context, width, height) {
 
   context.fillStyle = "#596b86";
   context.font = "13px Arial, sans-serif";
-  context.fillText("10 lignes par semaine", width - 14, 40);
+  context.fillText("10 أبيات أسبوعيًا", width - 14, 40);
 
-  context.direction = "ltr";
+  context.direction = "rtl";
   context.textAlign = "left";
-  context.fillText(new Intl.DateTimeFormat("fr-FR", { dateStyle: "full" }).format(new Date()), 14, 40);
+  context.fillText(new Intl.DateTimeFormat("ar", { dateStyle: "full" }).format(new Date()), 14, 40);
 }
 
 function drawPercentRow(context, columns, y, height) {
@@ -1350,7 +1350,7 @@ function drawCell(context, x, y, width, height, text, fill, options = {}) {
 }
 
 function resetApp() {
-  const confirmed = window.confirm("Réinitialiser tous les élèves, semaines et statuts ? / هل تريد إعادة ضبط كل الطلاب والأسابيع والحالات؟");
+  const confirmed = window.confirm("هل تريد إعادة ضبط كل الطلاب والأسابيع والحالات؟");
   if (!confirmed) return;
   localStorage.removeItem(STORAGE_KEY);
   state.students = [...defaultStudents];
@@ -1372,16 +1372,16 @@ async function copyStudentPortalLink() {
   const link = buildStudentPortalUrl();
   try {
     await navigator.clipboard.writeText(link);
-    updateBackendUi("Lien élève copié. / تم نسخ رابط الطالب.");
+    updateBackendUi("تم نسخ رابط الطالب.");
   } catch {
-    updateBackendUi(`Lien élève / رابط الطالب : ${link}`);
+    updateBackendUi(`رابط الطالب: ${link}`);
   }
 }
 
 elements.analyzeBtn.addEventListener("click", applyChatAnalysis);
 elements.clearChatBtn.addEventListener("click", () => {
   elements.chatInput.value = "";
-  elements.analysisResult.textContent = "Messages vidés. / تم مسح الرسائل.";
+  elements.analysisResult.textContent = "تم مسح الرسائل.";
 });
 elements.saveApiUrlBtn.addEventListener("click", saveBackendUrl);
 elements.copyPortalBtn.addEventListener("click", copyStudentPortalLink);
