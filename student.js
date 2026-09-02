@@ -10,7 +10,18 @@ const elements = {
 };
 
 const FIREBASE_URL_KEY = "shatibiyya-firebase-url";
+const GROUP_KEY = "shatibiyya-active-group";
+const DEFAULT_GROUP_ID = "group1";
+const VALID_GROUP_IDS = ["group1", "group2"];
+let currentGroupId = initialGroupId();
 let currentConfig = null;
+
+function initialGroupId() {
+  const fromQuery = new URLSearchParams(window.location.search).get("group");
+  const saved = localStorage.getItem(GROUP_KEY);
+  const groupId = fromQuery || saved || DEFAULT_GROUP_ID;
+  return VALID_GROUP_IDS.includes(groupId) ? groupId : DEFAULT_GROUP_ID;
+}
 
 function weekLabel(week) {
   return `من ${week.start} إلى ${week.end}`;
@@ -89,11 +100,21 @@ function getFirebaseUrl() {
   if (cleaned) {
     localStorage.setItem(FIREBASE_URL_KEY, cleaned);
   }
+  localStorage.setItem(GROUP_KEY, currentGroupId);
   return cleaned;
 }
 
 function firebasePath(path) {
   return `${getFirebaseUrl()}/${path}.json`;
+}
+
+function groupPath(path) {
+  if (currentGroupId === DEFAULT_GROUP_ID) return path;
+  if (path === "config") return `config/groups/${currentGroupId}`;
+  if (path.startsWith("config/")) return `config/groups/${currentGroupId}/${path.slice("config/".length)}`;
+  if (path === "submissions") return `submissions/groups/${currentGroupId}`;
+  if (path.startsWith("submissions/")) return `submissions/groups/${currentGroupId}/${path.slice("submissions/".length)}`;
+  return path;
 }
 
 async function firebaseRequest(path, options = {}) {
@@ -125,7 +146,7 @@ async function loadConfig() {
     const previousValidator = elements.validatorSelect.value;
     const previousStudent = elements.studentSelect.value;
     const config = getFirebaseUrl()
-      ? await firebaseRequest("config")
+      ? await firebaseRequest(groupPath("config"))
       : await localRequest("/api/config");
 
     if (!config?.students?.length || !config?.weeks?.length) {
@@ -258,7 +279,7 @@ async function applyConfirmedStatus(student, weekId, status) {
   const key = statusKey(student, weekId);
 
   if (getFirebaseUrl()) {
-    await firebaseRequest("config/statuses", {
+    await firebaseRequest(groupPath("config/statuses"), {
       method: "PATCH",
       body: JSON.stringify({ [key]: status }),
     });
@@ -315,7 +336,7 @@ async function submitResponse(event) {
     const late = appliedStatus === "makeup";
 
     if (getFirebaseUrl()) {
-      await firebaseRequest("submissions", {
+      await firebaseRequest(groupPath("submissions"), {
         method: "POST",
         body: JSON.stringify({
           ...payload,

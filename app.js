@@ -1,5 +1,7 @@
 const STORAGE_KEY = "shatibiyya-tracker-v1";
 const FIREBASE_URL_KEY = "shatibiyya-firebase-url";
+const GROUP_KEY = "shatibiyya-active-group";
+const DEFAULT_GROUP_ID = "group1";
 
 const defaultStudents = [
   "أنيس عمار",
@@ -21,6 +23,34 @@ const defaultStudents = [
   "حمزة الورتاني",
 ];
 
+const group2Students = [
+  "إيناس غيضاوي",
+  "سلسبيل القاضي",
+  "أنور المناعي",
+  "ياسين الماجري",
+  "خديجة العفاس",
+  "أشرف قرمش",
+  "محمد أمين كمون",
+  "محمد نزار بشير",
+  "محمد البدوي",
+  "محمد قطاطة",
+  "أسماء مسعودي",
+  "نور القاضي",
+  "غيث عبد الله",
+  "أحمد أمين شقرون",
+  "ضياء الدين بن سليمان",
+  "محمد خليل حيزاوي",
+  "مسعود خرشوفي",
+  "أحمد جوانب",
+  "محمد الهادى الغربي",
+  "أنور عزديني",
+  "مصطفى الأحمدي",
+  "أسامة عصمان",
+  "عزیز موسی",
+  "تيسير عمارة",
+  "محمد الصادق الكشباطي",
+];
+
 const defaultWeeks = [
   { id: "2026-02-07-931-950", start: 931, end: 950, date: "2026-02-07" },
   { id: "2026-04-04-941-960", start: 941, end: 960, date: "2026-04-04" },
@@ -38,9 +68,30 @@ const defaultWeeks = [
   { id: "2026-09-05-1061-1080", start: 1061, end: 1080, date: "2026-09-05" },
 ];
 
+const group2Weeks = [
+  { id: "2026-09-06-431-450", start: 431, end: 450, date: "2026-09-06" },
+];
+
 const defaultSettings = {
   weekBoundaryDay: 6,
 };
+
+const groupDefinitions = {
+  group1: {
+    label: "المجموعة 1",
+    students: defaultStudents,
+    weeks: defaultWeeks,
+    settings: defaultSettings,
+  },
+  group2: {
+    label: "المجموعة 2",
+    students: group2Students,
+    weeks: group2Weeks,
+    settings: { weekBoundaryDay: 0 },
+  },
+};
+
+let currentGroupId = initialGroupId();
 
 const recoveredStatusWeekIds = [
   "2026-04-25-971-990",
@@ -83,6 +134,7 @@ const recoveredMakeupStatuses = {
 const state = loadState();
 
 const elements = {
+  groupSelect: document.querySelector("#groupSelect"),
   weekSelect: document.querySelector("#weekSelect"),
   apiUrlInput: document.querySelector("#apiUrlInput"),
   saveApiUrlBtn: document.querySelector("#saveApiUrlBtn"),
@@ -117,46 +169,89 @@ const elements = {
   resetBtn: document.querySelector("#resetBtn"),
 };
 
-function loadState() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      return {
-        students: parsed.students?.length ? parsed.students : defaultStudents,
-        weeks: mergeWeeks(parsed.weeks?.length ? parsed.weeks : defaultWeeks),
-        settings: normalizeSettings(parsed.settings),
-        statuses: { ...buildRecoveredStatuses(), ...(parsed.statuses || {}) },
-        readyOrder: parsed.readyOrder || buildRecoveredReadyOrder(),
-        submissions: parsed.submissions || [],
-      };
-    } catch {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  }
+function initialGroupId() {
+  const fromQuery = new URLSearchParams(window.location.search).get("group");
+  const saved = localStorage.getItem(GROUP_KEY);
+  return normalizeGroupId(fromQuery || saved || DEFAULT_GROUP_ID);
+}
 
+function normalizeGroupId(groupId) {
+  return groupDefinitions[groupId] ? groupId : DEFAULT_GROUP_ID;
+}
+
+function currentGroup() {
+  return groupDefinitions[currentGroupId] || groupDefinitions[DEFAULT_GROUP_ID];
+}
+
+function currentStorageKey() {
+  return `${STORAGE_KEY}-${currentGroupId}`;
+}
+
+function currentDefaultStudents() {
+  return [...currentGroup().students];
+}
+
+function currentDefaultWeeks() {
+  return currentGroup().weeks.map((week) => ({ ...week }));
+}
+
+function currentDefaultSettings() {
+  return { ...currentGroup().settings };
+}
+
+function currentDefaultStatuses() {
+  return currentGroupId === DEFAULT_GROUP_ID ? buildRecoveredStatuses() : {};
+}
+
+function currentDefaultReadyOrder() {
+  return currentGroupId === DEFAULT_GROUP_ID ? buildRecoveredReadyOrder() : {};
+}
+
+function makeDefaultState() {
   return {
-    students: defaultStudents,
-    weeks: mergeWeeks(defaultWeeks),
-    settings: { ...defaultSettings },
-    statuses: buildRecoveredStatuses(),
-    readyOrder: buildRecoveredReadyOrder(),
+    students: currentDefaultStudents(),
+    weeks: mergeWeeks(currentDefaultWeeks()),
+    settings: currentDefaultSettings(),
+    statuses: currentDefaultStatuses(),
+    readyOrder: currentDefaultReadyOrder(),
     submissions: [],
   };
 }
 
+function loadState() {
+  const saved = localStorage.getItem(currentStorageKey());
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      return {
+        students: parsed.students?.length ? parsed.students : currentDefaultStudents(),
+        weeks: mergeWeeks(parsed.weeks?.length ? parsed.weeks : currentDefaultWeeks()),
+        settings: normalizeSettings(parsed.settings),
+        statuses: { ...currentDefaultStatuses(), ...(parsed.statuses || {}) },
+        readyOrder: parsed.readyOrder || currentDefaultReadyOrder(),
+        submissions: parsed.submissions || [],
+      };
+    } catch {
+      localStorage.removeItem(currentStorageKey());
+    }
+  }
+
+  return makeDefaultState();
+}
+
 function normalizeSettings(settings = {}) {
   const weekBoundaryDay = Number(settings.weekBoundaryDay);
+  const defaults = currentDefaultSettings();
   return {
     weekBoundaryDay: Number.isInteger(weekBoundaryDay) && weekBoundaryDay >= 0 && weekBoundaryDay <= 6
       ? weekBoundaryDay
-      : defaultSettings.weekBoundaryDay,
+      : defaults.weekBoundaryDay,
   };
 }
 
-function mergeWeeks(weeks = []) {
+function mergeWeeks(weeks = [], baseWeeks = currentDefaultWeeks()) {
   const byId = new Map();
-  [...weeks, ...defaultWeeks].forEach((week) => {
+  [...weeks, ...baseWeeks].forEach((week) => {
     if (!week?.id) return;
     byId.set(week.id, {
       id: String(week.id),
@@ -169,7 +264,7 @@ function mergeWeeks(weeks = []) {
 }
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  localStorage.setItem(currentStorageKey(), JSON.stringify(state));
   syncConfigToBackend();
 }
 
@@ -191,6 +286,15 @@ function setFirebaseUrl(url) {
 
 function firebasePath(path) {
   return `${getFirebaseUrl()}/${path}.json`;
+}
+
+function groupPath(path) {
+  if (currentGroupId === DEFAULT_GROUP_ID) return path;
+  if (path === "config") return `config/groups/${currentGroupId}`;
+  if (path.startsWith("config/")) return `config/groups/${currentGroupId}/${path.slice("config/".length)}`;
+  if (path === "submissions") return `submissions/groups/${currentGroupId}`;
+  if (path.startsWith("submissions/")) return `submissions/groups/${currentGroupId}/${path.slice("submissions/".length)}`;
+  return path;
 }
 
 async function firebaseRequest(path, options = {}) {
@@ -223,7 +327,7 @@ async function loadConfigFromBackend() {
   try {
     let config;
     if (getFirebaseUrl()) {
-      config = await firebaseRequest("config");
+      config = await firebaseRequest(groupPath("config"));
     } else {
       config = await localRequest("/api/config");
     }
@@ -231,13 +335,9 @@ async function loadConfigFromBackend() {
       state.students = config.students;
       state.weeks = mergeWeeks(config.weeks);
       state.settings = normalizeSettings(config.settings);
-      if (config.statuses && Object.keys(config.statuses).length) {
-        state.statuses = { ...buildRecoveredStatuses(), ...config.statuses };
-      }
-      if (config.readyOrder && Object.keys(config.readyOrder).length) {
-        state.readyOrder = { ...buildRecoveredReadyOrder(), ...config.readyOrder };
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      state.statuses = { ...currentDefaultStatuses(), ...(config.statuses || {}) };
+      state.readyOrder = { ...currentDefaultReadyOrder(), ...(config.readyOrder || {}) };
+      localStorage.setItem(currentStorageKey(), JSON.stringify(state));
       render();
     } else if (getFirebaseUrl()) {
       await syncConfigNow();
@@ -264,8 +364,8 @@ async function syncConfigNow() {
       readyOrder: state.readyOrder,
     };
     if (getFirebaseUrl()) {
-      await firebaseRequest("config", {
-        method: "PUT",
+      await firebaseRequest(groupPath("config"), {
+        method: currentGroupId === DEFAULT_GROUP_ID ? "PATCH" : "PUT",
         body: JSON.stringify(config),
       });
     } else {
@@ -284,7 +384,7 @@ async function loadSubmissions() {
   const weekId = elements.weekSelect.value;
   try {
     if (getFirebaseUrl()) {
-      const all = (await firebaseRequest("submissions")) || {};
+      const all = (await firebaseRequest(groupPath("submissions"))) || {};
       state.submissions = Object.entries(all)
         .map(([id, submission]) => ({ id, ...submission }))
         .filter((submission) => submission.weekId === weekId)
@@ -293,7 +393,7 @@ async function loadSubmissions() {
       const payload = await localRequest(`/api/submissions?weekId=${encodeURIComponent(weekId)}`);
       state.submissions = payload.submissions;
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(currentStorageKey(), JSON.stringify(state));
     renderSubmissions();
     updateBackendUi(`تم استرجاع ${state.submissions.length} إجابة.`);
   } catch (error) {
@@ -303,7 +403,7 @@ async function loadSubmissions() {
 
 async function markSubmissionApplied(submissionId, metadata = {}) {
   if (getFirebaseUrl()) {
-    await firebaseRequest(`submissions/${submissionId}`, {
+    await firebaseRequest(groupPath(`submissions/${submissionId}`), {
       method: "PATCH",
       body: JSON.stringify({
         applied: true,
@@ -320,11 +420,14 @@ async function markSubmissionApplied(submissionId, metadata = {}) {
 }
 
 function updateBackendUi(message = "") {
+  if (elements.groupSelect) {
+    elements.groupSelect.value = currentGroupId;
+  }
   if (elements.apiUrlInput) {
     elements.apiUrlInput.value = getFirebaseUrl();
   }
   const source = getFirebaseUrl()
-    ? "المصدر: Firebase."
+    ? `المصدر: Firebase. ${currentGroup().label}.`
     : "المصدر: المتصفح المحلي. أضف رابط Firebase.";
   if (elements.syncStatus) {
     elements.syncStatus.textContent = message ? `${source} ${message}` : source;
@@ -336,10 +439,20 @@ function updateBackendUi(message = "") {
 
 function buildStudentPortalUrl() {
   const url = new URL("student.html", window.location.href);
+  url.searchParams.set("group", currentGroupId);
   if (getFirebaseUrl()) {
     url.searchParams.set("db", getFirebaseUrl());
   }
   return url.toString();
+}
+
+function switchGroup(groupId) {
+  currentGroupId = normalizeGroupId(groupId);
+  localStorage.setItem(GROUP_KEY, currentGroupId);
+  Object.assign(state, loadState());
+  render();
+  loadConfigFromBackend();
+  loadSubmissions();
 }
 
 function normalizeArabic(value) {
@@ -1350,14 +1463,10 @@ function drawCell(context, x, y, width, height, text, fill, options = {}) {
 }
 
 function resetApp() {
-  const confirmed = window.confirm("هل تريد إعادة ضبط كل الطلاب والأسابيع والحالات؟");
+  const confirmed = window.confirm(`هل تريد إعادة ضبط بيانات ${currentGroup().label}؟`);
   if (!confirmed) return;
-  localStorage.removeItem(STORAGE_KEY);
-  state.students = [...defaultStudents];
-  state.weeks = mergeWeeks(defaultWeeks);
-  state.settings = { ...defaultSettings };
-  state.statuses = buildRecoveredStatuses();
-  state.readyOrder = buildRecoveredReadyOrder();
+  localStorage.removeItem(currentStorageKey());
+  Object.assign(state, makeDefaultState());
   saveState();
   render();
 }
@@ -1383,6 +1492,7 @@ elements.clearChatBtn.addEventListener("click", () => {
   elements.chatInput.value = "";
   elements.analysisResult.textContent = "تم مسح الرسائل.";
 });
+elements.groupSelect?.addEventListener("change", () => switchGroup(elements.groupSelect.value));
 elements.saveApiUrlBtn.addEventListener("click", saveBackendUrl);
 elements.copyPortalBtn.addEventListener("click", copyStudentPortalLink);
 elements.refreshSubmissionsBtn.addEventListener("click", loadSubmissions);
