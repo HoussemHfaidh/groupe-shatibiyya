@@ -592,6 +592,22 @@ textarea {
   margin-top: 20px;
 }
 
+.account-box {
+  align-items: center;
+  background: #f4f7fc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin: 16px 0 4px;
+  padding: 10px 12px;
+}
+
+.account-box strong {
+  overflow-wrap: anywhere;
+}
+
 .status-choice {
   border: 1px solid var(--line);
   border-radius: 8px;
