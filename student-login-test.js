@@ -20,7 +20,8 @@ const elements = {
 const FIREBASE_URL_KEY = "shatibiyya-firebase-url";
 const GROUP_KEY = "shatibiyya-active-group";
 const AUTH_SESSION_KEY = "shatibiyya-login-test-session";
-const TEST_DATA_ROOT = "loginTest";
+const TEST_GROUP_STORAGE_ID = "login-test-group1";
+const TEST_REMOTE_URL = "https://cdn.jsdelivr.net/gh/HoussemHfaidh/groupe-shatibiyya@codex/login-system/student-login-test.html";
 const DEFAULT_GROUP_ID = "group1";
 const VALID_GROUP_IDS = ["group1", "group2"];
 let currentGroupId = initialGroupId();
@@ -118,7 +119,7 @@ function getFirebaseUrl() {
 }
 
 function seedCurrentUserForLoginTest(config) {
-  if (!window.SHATIBIYYA_LOGIN_TEST_LOCAL_ONLY || !currentUserProfile?.studentName) {
+  if (!currentUserProfile?.studentName) {
     return config;
   }
   const weekId = config.weeks?.at(-1)?.id;
@@ -141,10 +142,10 @@ function firebasePath(path) {
 }
 
 function groupPath(path) {
-  if (path === "config") return `${TEST_DATA_ROOT}/config/${currentGroupId}`;
-  if (path.startsWith("config/")) return `${TEST_DATA_ROOT}/config/${currentGroupId}/${path.slice("config/".length)}`;
-  if (path === "submissions") return `${TEST_DATA_ROOT}/submissions/${currentGroupId}`;
-  if (path.startsWith("submissions/")) return `${TEST_DATA_ROOT}/submissions/${currentGroupId}/${path.slice("submissions/".length)}`;
+  if (path === "config") return `config/groups/${TEST_GROUP_STORAGE_ID}`;
+  if (path.startsWith("config/")) return `config/groups/${TEST_GROUP_STORAGE_ID}/${path.slice("config/".length)}`;
+  if (path === "submissions") return `submissions/groups/${TEST_GROUP_STORAGE_ID}`;
+  if (path.startsWith("submissions/")) return `submissions/groups/${TEST_GROUP_STORAGE_ID}/${path.slice("submissions/".length)}`;
   return path;
 }
 
@@ -225,6 +226,9 @@ function sessionFromAuthPayload(payload) {
 }
 
 async function signInWithPassword(email, password) {
+  if (window.location.protocol === "file:") {
+    throw new Error(`افتح صفحة الاختبار من هذا الرابط: ${TEST_REMOTE_URL}`);
+  }
   const response = await fetch(authEndpoint("accounts:signInWithPassword"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -268,6 +272,15 @@ async function ensureFreshAuthSession() {
 }
 
 function authErrorMessage(code = "") {
+  if (code.includes("OPERATION_NOT_ALLOWED")) {
+    return "يجب تفعيل Email/Password في Firebase Authentication.";
+  }
+  if (code.includes("INVALID_EMAIL")) {
+    return "صيغة البريد الإلكتروني غير صحيحة.";
+  }
+  if (code.includes("USER_DISABLED")) {
+    return "هذا الحساب معطل في Firebase.";
+  }
   if (code.includes("INVALID_LOGIN_CREDENTIALS") || code.includes("INVALID_PASSWORD")) {
     return "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
   }
@@ -294,7 +307,9 @@ function applyAuthenticatedProfile(profile) {
 }
 
 function showLogin(message = "الرجاء تسجيل الدخول.") {
-  elements.loginResult.textContent = message;
+  elements.loginResult.textContent = window.location.protocol === "file:"
+    ? `افتح صفحة الاختبار من هذا الرابط: ${TEST_REMOTE_URL}`
+    : message;
   elements.loginPanel.hidden = false;
   elements.studentPanel.hidden = true;
 }
