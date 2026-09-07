@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>بوابة الطالب - اختبار الدخول</title>
+    <link rel="stylesheet" href="styles.css?v=20260907-login-test" />
+  </head>
+  <body class="student-page">
+    <main class="student-shell">
+      <section id="loginPanel" class="panel student-card">
+        <p class="eyebrow">الشاطبية - اختبار الدخول</p>
+        <h1>تسجيل الدخول</h1>
+        <p class="subtitle">
+          ادخل بالبريد الإلكتروني وكلمة المرور التي أنشأها الأستاذ في Firebase.
+        </p>
+
+        <form id="loginForm" class="student-form">
+          <label class="field">
+            <span>البريد الإلكتروني</span>
+            <input id="loginEmail" type="email" autocomplete="username" required />
+          </label>
+
+          <label class="field">
+            <span>كلمة المرور</span>
+            <input id="loginPassword" type="password" autocomplete="current-password" required />
+          </label>
+
+          <button class="primary" type="submit">دخول</button>
+        </form>
+
+        <div id="loginResult" class="result-box" aria-live="polite">
+          الرجاء تسجيل الدخول.
+        </div>
+      </section>
+
+      <section id="studentPanel" class="panel student-card" hidden>
+        <p class="eyebrow">الشاطبية - حرز الأماني</p>
+        <h1>تأكيد التسميع</h1>
+        <p class="subtitle">
+          اختر الأسبوع، ثم انظر إلى الطلاب الذين تم اعتمادهم، وبعد التسميع يؤكد الطالب الذي سمعت عنده.
+        </p>
+
+        <div class="account-box">
+          <strong id="accountName"></strong>
+          <button id="logoutBtn" class="ghost" type="button">خروج</button>
+        </div>
+
+        <form id="submissionForm" class="student-form">
+          <label class="field">
+            <span>الأسبوع</span>
+            <select id="studentWeekSelect" required></select>
+          </label>
+
+          <fieldset id="validatorChoice" class="validator-choice">
+            <legend>الطلاب المتاحون</legend>
+            <p id="validatorHint" class="validator-hint"></p>
+            <div id="validatorList" class="validator-list"></div>
+          </fieldset>
+
+          <label class="field">
+            <span>أنا الطالب / الطالبة</span>
+            <select id="validatorSelect" required></select>
+          </label>
+
+          <label class="field">
+            <span>أؤكد تسميع الطالب / الطالبة</span>
+            <select id="studentSelect" required></select>
+          </label>
+
+          <label class="field">
+            <span>ملاحظة اختيارية</span>
+            <textarea id="studentNote" rows="3" placeholder="مثال: تم تأكيد التسميع"></textarea>
+          </label>
+
+          <button class="primary" type="submit">تأكيد التسميع</button>
+        </form>
+
+        <div id="studentResult" class="result-box" aria-live="polite">
+          جار تحميل البوابة...
+        </div>
+      </section>
+    </main>
+
+    <script src="config-login-test.js?v=20260907-login-remote-test"></script>
+    <script src="student-login-test.js?v=20260907-login-remote-test"></script>
+  </body>
+</html>
