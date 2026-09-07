@@ -281,6 +281,15 @@ function authErrorMessage(code = "") {
   if (code.includes("USER_DISABLED")) {
     return "هذا الحساب معطل في Firebase.";
   }
+  if (code.includes("INVALID_API_KEY")) {
+    return "مفتاح Firebase غير صحيح.";
+  }
+  if (code.includes("API_KEY_SERVICE_BLOCKED") || code.includes("REQUEST_FROM_REFERER_BLOCKED")) {
+    return "يجب السماح لهذا الرابط في إعدادات مفتاح Firebase.";
+  }
+  if (code.includes("UNAUTHORIZED_DOMAIN")) {
+    return "يجب إضافة هذا النطاق في Firebase Authentication > Settings > Authorized domains.";
+  }
   if (code.includes("INVALID_LOGIN_CREDENTIALS") || code.includes("INVALID_PASSWORD")) {
     return "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
   }
@@ -290,7 +299,7 @@ function authErrorMessage(code = "") {
   if (code.includes("TOO_MANY_ATTEMPTS_TRY_LATER")) {
     return "محاولات كثيرة. حاول مرة أخرى لاحقا.";
   }
-  return "تعذر تسجيل الدخول.";
+  return code ? `تعذر تسجيل الدخول. (${code})` : "تعذر تسجيل الدخول.";
 }
 
 function groupLabel(groupId) {
