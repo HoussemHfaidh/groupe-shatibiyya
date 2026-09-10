@@ -26,7 +26,10 @@
             <input id="loginPassword" type="password" autocomplete="current-password" required />
           </label>
 
-          <button class="primary" type="submit">دخول</button>
+          <div class="login-actions">
+            <button class="primary" type="submit">دخول</button>
+            <button id="resetPasswordBtn" class="secondary" type="button">نسيت كلمة المرور</button>
+          </div>
         </form>
 
         <div id="loginResult" class="result-box" aria-live="polite">
@@ -83,6 +86,6 @@
     </main>
 
     <script src="config-login-test.js?v=20260907-login-remote-test"></script>
-    <script src="student-login-test.js?v=20260907-login-debug-error"></script>
+    <script src="student-login-test.js?v=20260910-password-reset"></script>
   </body>
 </html>

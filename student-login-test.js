@@ -4,6 +4,7 @@ const elements = {
   loginForm: document.querySelector("#loginForm"),
   loginEmail: document.querySelector("#loginEmail"),
   loginPassword: document.querySelector("#loginPassword"),
+  resetPasswordBtn: document.querySelector("#resetPasswordBtn"),
   loginResult: document.querySelector("#loginResult"),
   accountName: document.querySelector("#accountName"),
   logoutBtn: document.querySelector("#logoutBtn"),
@@ -239,6 +240,25 @@ async function signInWithPassword(email, password) {
     throw new Error(authErrorMessage(payload.error?.message));
   }
   return sessionFromAuthPayload(payload);
+}
+
+async function sendPasswordResetEmail(email) {
+  if (window.location.protocol === "file:") {
+    throw new Error(`افتح صفحة الاختبار من هذا الرابط: ${TEST_REMOTE_URL}`);
+  }
+  const response = await fetch(authEndpoint("accounts:sendOobCode"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestType: "PASSWORD_RESET",
+      email,
+    }),
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(authErrorMessage(payload.error?.message));
+  }
+  return payload;
 }
 
 async function refreshAuthSession(session) {
@@ -642,8 +662,26 @@ function handleLogout() {
   showLogin("تم تسجيل الخروج.");
 }
 
+async function handlePasswordReset() {
+  const email = normalizeEmail(elements.loginEmail.value);
+  if (!email) {
+    showLogin("اكتب البريد الإلكتروني أولا، ثم اضغط على نسيت كلمة المرور.");
+    elements.loginEmail.focus();
+    return;
+  }
+
+  elements.loginResult.textContent = "جار إرسال رابط تغيير كلمة المرور...";
+  try {
+    await sendPasswordResetEmail(email);
+    showLogin("تم إرسال رابط تغيير كلمة المرور إلى البريد الإلكتروني.");
+  } catch (error) {
+    showLogin(error.message);
+  }
+}
+
 elements.form.addEventListener("submit", submitResponse);
 elements.loginForm.addEventListener("submit", handleLogin);
+elements.resetPasswordBtn.addEventListener("click", handlePasswordReset);
 elements.logoutBtn.addEventListener("click", handleLogout);
 elements.weekSelect.addEventListener("change", () => renderWeekState());
 
