@@ -440,7 +440,7 @@ function renderWeekState(preferredValidator = "", preferredStudent = "") {
   if (!currentConfig) return;
 
   const weekId = elements.weekSelect.value;
-  const greenStudents = currentConfig.students.filter((student) => isGreenStudent(currentConfig, student, weekId));
+  const greenStudents = orderedGreenStudents(weekId);
   const currentStudentName = currentUserProfile?.studentName || "";
   const validatorStudents = greenStudents.filter((student) => student === currentStudentName);
   const waitingStudents = currentConfig.students.filter((student) => (
@@ -451,6 +451,15 @@ function renderWeekState(preferredValidator = "", preferredStudent = "") {
   renderValidatorSelect(validatorStudents, preferredValidator);
   renderStudentSelect(waitingStudents, preferredStudent);
   setFormEnabled(validatorStudents.length > 0 && waitingStudents.length > 0);
+}
+
+function orderedGreenStudents(weekId) {
+  const greenStudents = currentConfig.students.filter((student) => isGreenStudent(currentConfig, student, weekId));
+  const savedOrder = currentConfig.readyOrder?.[weekId] || [];
+  return [
+    ...savedOrder.filter((student) => greenStudents.includes(student)),
+    ...greenStudents.filter((student) => !savedOrder.includes(student)),
+  ];
 }
 
 function renderAvailabilityList(greenStudents, weekId) {
@@ -464,7 +473,12 @@ function renderAvailabilityList(greenStudents, weekId) {
       "اتصل بطالب معتمد خارج البوابة، وبعد التسميع يؤكد هنا.";
   }
 
-  currentConfig.students.forEach((student) => {
+  const orderedStudents = [
+    ...greenStudents,
+    ...currentConfig.students.filter((student) => !greenStudents.includes(student)),
+  ];
+
+  orderedStudents.forEach((student) => {
     const green = isGreenStudent(currentConfig, student, weekId);
     const item = document.createElement("div");
     item.className = `validator-option ${green ? "available" : "unavailable"}`;
