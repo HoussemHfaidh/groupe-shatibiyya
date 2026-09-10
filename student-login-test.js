@@ -119,21 +119,6 @@ function getFirebaseUrl() {
   return cleaned;
 }
 
-function seedCurrentUserForLoginTest(config) {
-  if (!currentUserProfile?.studentName) {
-    return config;
-  }
-  const weekId = config.weeks?.at(-1)?.id;
-  if (!weekId) return config;
-  return {
-    ...config,
-    statuses: {
-      ...(config.statuses || {}),
-      [statusKey(currentUserProfile.studentName, weekId)]: "done",
-    },
-  };
-}
-
 function firebasePath(path) {
   const url = new URL(`${getFirebaseUrl()}/${path}.json`);
   if (currentAuthSession?.idToken) {
@@ -404,16 +389,11 @@ async function loadConfig() {
     if ((!config?.students?.length || !config?.weeks?.length) && getFirebaseUrl()) {
       const productionConfig = await firebaseRequest(productionGroupPath("config"));
       if (productionConfig?.students?.length && productionConfig?.weeks?.length) {
-        const testStatuses = productionConfig.statuses || {};
-        const testWeekId = productionConfig.weeks.at(-1)?.id;
-        if (currentUserProfile?.studentName && testWeekId) {
-          testStatuses[statusKey(currentUserProfile.studentName, testWeekId)] = "done";
-        }
         config = {
           students: productionConfig.students,
           weeks: productionConfig.weeks,
           settings: productionConfig.settings || { weekBoundaryDay: 6 },
-          statuses: testStatuses,
+          statuses: productionConfig.statuses || {},
           readyOrder: productionConfig.readyOrder || {},
         };
         await firebaseRequest(groupPath("config"), {
@@ -427,7 +407,6 @@ async function loadConfig() {
       throw new Error("الإعدادات غير موجودة.");
     }
 
-    config = seedCurrentUserForLoginTest(config);
     currentConfig = config;
     renderWeeks(config, previousWeek);
     renderWeekState(previousValidator, previousStudent);
