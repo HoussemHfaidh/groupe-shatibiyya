@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>متابعة الشاطبية - اختبار الأستاذ</title>
+    <link rel="stylesheet" href="styles.css?v=20260907-login-test" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">الشاطبية - اختبار الأستاذ</p>
+        <h1>متابعة حفظ الطلاب</h1>
+        <p class="subtitle">
+          هذه نسخة DEV تستعمل نفس الواجهة، لكنها تحفظ في بيانات DEV ولا تلمس الإنتاج. استعمل devMode=data للبيانات و devMode=test للاختبار.
+        </p>
+      </div>
+      <div class="header-actions">
+        <a id="studentPortalLink" class="link-button" href="student-login-dev.html">بوابة الطالب</a>
+        <button id="exportImageBtn" class="primary">تصدير الصورة</button>
+        <button id="resetBtn" class="ghost">إعادة ضبط</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel controls-panel" aria-labelledby="import-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="import-title">إجابات الطلاب</h2>
+            <p>
+              هنا يسترجع الأستاذ الإجابات ويتابع الحالات في الجدول.
+            </p>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>المجموعة</span>
+          <select id="groupSelect">
+            <option value="group1">المجموعة 1</option>
+            <option value="group2">المجموعة 2</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>رابط Firebase</span>
+          <input id="apiUrlInput" type="url" placeholder="https://example-default-rtdb.europe-west1.firebasedatabase.app" />
+        </label>
+
+        <div class="button-row">
+          <button id="saveApiUrlBtn" class="secondary">حفظ الرابط</button>
+          <button id="copyPortalBtn" class="secondary">نسخ رابط الطالب</button>
+        </div>
+
+        <label class="field">
+          <span>الأسبوع المطلوب</span>
+          <select id="weekSelect"></select>
+        </label>
+
+        <div class="button-row">
+          <button id="refreshSubmissionsBtn" class="primary">استرجاع الإجابات</button>
+          <button id="applySubmissionsBtn" class="secondary">تطبيق في الجدول</button>
+          <button id="markNoReplyBtn" class="secondary">تحديد من لم يجب</button>
+        </div>
+
+        <div id="syncStatus" class="result-box" aria-live="polite">
+          المصدر: Firebase DEV.
+        </div>
+
+        <div id="submissionList" class="submission-list"></div>
+        <div id="noReplyList" class="no-reply-list"></div>
+
+        <details class="manual-import">
+          <summary>إدخال يدوي</summary>
+        <label class="field">
+          <span>رسائل قديمة</span>
+          <textarea
+            id="chatInput"
+            spellcheck="false"
+            placeholder="أمثلة:
+[23/05/2026, 18:10] أنيس عمار: تم التسميع
+23/05/2026, 18:22 - أسماء شلبي: استدراك تم
+حمزة الورتاني: لا، لم أتمكن هذا الأسبوع"
+          ></textarea>
+        </label>
+
+        <div class="button-row">
+          <button id="analyzeBtn" class="primary">تحليل وتعبئة</button>
+          <button id="clearChatBtn" class="secondary">مسح الرسائل</button>
+        </div>
+
+        <div id="analysisResult" class="result-box" aria-live="polite">
+          لم يتم تحليل أي رسالة بعد.
+        </div>
+        </details>
+      </section>
+
+      <section class="panel setup-panel" aria-labelledby="setup-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="setup-title">الإعدادات</h2>
+            <p>
+              أضف الطلاب والأسابيع وحدد بداية ونهاية الأسبوع.
+            </p>
+          </div>
+        </div>
+
+        <form id="studentForm" class="inline-form">
+          <label class="field">
+            <span>طالب جديد</span>
+            <input id="studentName" type="text" autocomplete="off" placeholder="اسم الطالب" />
+          </label>
+          <button type="submit" class="secondary">إضافة</button>
+        </form>
+
+        <div id="studentList" class="student-list" aria-label="قائمة الطلاب"></div>
+
+        <label class="field">
+          <span>بداية ونهاية الأسبوع</span>
+          <select id="weekBoundaryDay">
+            <option value="6">السبت إلى السبت</option>
+            <option value="0">الأحد إلى الأحد</option>
+            <option value="1">الاثنين إلى الاثنين</option>
+            <option value="2">الثلاثاء إلى الثلاثاء</option>
+            <option value="3">الأربعاء إلى الأربعاء</option>
+            <option value="4">الخميس إلى الخميس</option>
+            <option value="5">الجمعة إلى الجمعة</option>
+          </select>
+        </label>
+
+        <form id="weekForm" class="week-form">
+          <label class="field">
+            <span>البداية</span>
+            <input id="lineStart" type="number" min="1" placeholder="1031" />
+          </label>
+          <label class="field">
+            <span>النهاية</span>
+            <input id="lineEnd" type="number" min="1" placeholder="1040" />
+          </label>
+          <label class="field">
+            <span>التاريخ</span>
+            <input id="weekDate" type="date" />
+          </label>
+          <button type="submit" class="secondary">إضافة أسبوع</button>
+        </form>
+
+        <div class="button-row week-actions">
+          <button id="nextWeekBtn" type="button" class="secondary">إنشاء الأسبوع التالي</button>
+        </div>
+
+        <div class="legend" aria-label="شرح الألوان">
+          <span><i class="swatch done"></i> تم</span>
+          <span><i class="swatch makeup"></i> استدراك</span>
+          <span><i class="swatch missed"></i> لم يتم</span>
+          <span><i class="swatch empty"></i> فارغ</span>
+        </div>
+      </section>
+
+      <section class="panel table-panel" aria-labelledby="table-title">
+        <div class="panel-heading table-heading">
+          <div>
+            <h2 id="table-title">الجدول الأسبوعي</h2>
+            <p>
+              اضغط على الخانة لتغيير الحالة يدويًا: فارغ، تم، استدراك، لم يتم.
+            </p>
+          </div>
+          <div class="button-row">
+            <button id="exportCsvBtn" class="secondary">تصدير CSV</button>
+            <button id="shareBtn" class="secondary">مشاركة</button>
+          </div>
+        </div>
+
+        <div id="captureArea" class="capture-card">
+          <div class="report-title">
+            <div>
+              <strong>متابعة حفظ الشاطبية</strong>
+              <span id="reportDate"></span>
+            </div>
+            <small>10 أبيات أسبوعيًا</small>
+          </div>
+          <div id="tableScroll" class="table-scroll">
+            <table id="trackingTable" class="tracking-table"></table>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel chain-panel" aria-labelledby="chain-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="chain-title">ترتيب التسميع</h2>
+            <p>
+              يتم ترتيب الطلاب المعتمدين للأسبوع المختار.
+            </p>
+          </div>
+        </div>
+        <ol id="readingChain" class="reading-chain"></ol>
+      </section>
+    </main>
+
+    <template id="downloadTemplate">
+      <a id="hiddenDownload" hidden></a>
+    </template>
+
+    <script src="config-login-test.js?v=20260910-email-only"></script>
+    <script>
+      window.SHATIBIYYA_PROFESSOR_DEV_MODE = true;
+    </script>
+    <script src="app.js?v=20260910-prof-dev"></script>
+  </body>
+</html>

@@ -1,7 +1,20 @@
 const STORAGE_KEY = "shatibiyya-tracker-v1";
 const FIREBASE_URL_KEY = "shatibiyya-firebase-url";
 const GROUP_KEY = "shatibiyya-active-group";
+const DEV_MODE_KEY = "shatibiyya-dev-mode";
 const DEFAULT_GROUP_ID = "group1";
+const DEV_GROUP_STORAGE_IDS = {
+  data: {
+    group1: "login-test-group1",
+    group2: "login-test-group2",
+  },
+  test: {
+    group1: "login-sandbox-group1",
+    group2: "login-sandbox-group2",
+  },
+};
+const DEFAULT_DEV_MODE = "data";
+const VALID_DEV_MODES = ["data", "test"];
 
 const defaultStudents = [
   "أنيس عمار",
@@ -79,6 +92,7 @@ const groupDefinitions = {
 };
 
 let currentGroupId = initialGroupId();
+let currentDevMode = initialDevMode();
 
 const recoveredStatusWeekIds = [];
 
@@ -130,6 +144,12 @@ function initialGroupId() {
   return normalizeGroupId(fromQuery || saved || DEFAULT_GROUP_ID);
 }
 
+function initialDevMode() {
+  const fromQuery = new URLSearchParams(window.location.search).get("devMode");
+  const configured = fromQuery || window.SHATIBIYYA_DEFAULT_DEV_MODE || localStorage.getItem(DEV_MODE_KEY) || DEFAULT_DEV_MODE;
+  return VALID_DEV_MODES.includes(configured) ? configured : DEFAULT_DEV_MODE;
+}
+
 function normalizeGroupId(groupId) {
   return groupDefinitions[groupId] ? groupId : DEFAULT_GROUP_ID;
 }
@@ -139,7 +159,7 @@ function currentGroup() {
 }
 
 function currentStorageKey() {
-  return `${STORAGE_KEY}-${currentGroupId}`;
+  return `${STORAGE_KEY}-${currentGroupId}${isProfessorDevMode() ? `-dev-${currentDevMode}` : ""}`;
 }
 
 function currentDefaultStudents() {
@@ -243,7 +263,24 @@ function firebasePath(path) {
   return `${getFirebaseUrl()}/${path}.json`;
 }
 
+function isProfessorDevMode() {
+  return Boolean(window.SHATIBIYYA_PROFESSOR_DEV_MODE);
+}
+
+function currentDevStorageId() {
+  const storageIds = DEV_GROUP_STORAGE_IDS[currentDevMode] || DEV_GROUP_STORAGE_IDS.data;
+  return storageIds[currentGroupId] || storageIds.group1;
+}
+
 function groupPath(path) {
+  if (isProfessorDevMode()) {
+    const storageId = currentDevStorageId();
+    if (path === "config") return `config/groups/${storageId}`;
+    if (path.startsWith("config/")) return `config/groups/${storageId}/${path.slice("config/".length)}`;
+    if (path === "submissions") return `submissions/groups/${storageId}`;
+    if (path.startsWith("submissions/")) return `submissions/groups/${storageId}/${path.slice("submissions/".length)}`;
+    return path;
+  }
   if (currentGroupId === DEFAULT_GROUP_ID) return path;
   if (path === "config") return `config/groups/${currentGroupId}`;
   if (path.startsWith("config/")) return `config/groups/${currentGroupId}/${path.slice("config/".length)}`;
@@ -320,7 +357,7 @@ async function syncConfigNow() {
     };
     if (getFirebaseUrl()) {
       await firebaseRequest(groupPath("config"), {
-        method: currentGroupId === DEFAULT_GROUP_ID ? "PATCH" : "PUT",
+        method: currentGroupId === DEFAULT_GROUP_ID || isProfessorDevMode() ? "PATCH" : "PUT",
         body: JSON.stringify(config),
       });
     } else {
@@ -382,7 +419,7 @@ function updateBackendUi(message = "") {
     elements.apiUrlInput.value = getFirebaseUrl();
   }
   const source = getFirebaseUrl()
-    ? `المصدر: Firebase. ${currentGroup().label}.`
+    ? `المصدر: Firebase${isProfessorDevMode() ? ` DEV ${currentDevMode === "test" ? "اختبار" : "بيانات"}` : ""}. ${currentGroup().label}.`
     : "المصدر: المتصفح المحلي. أضف رابط Firebase.";
   if (elements.syncStatus) {
     elements.syncStatus.textContent = message ? `${source} ${message}` : source;
@@ -393,8 +430,11 @@ function updateBackendUi(message = "") {
 }
 
 function buildStudentPortalUrl() {
-  const url = new URL("student.html", window.location.href);
+  const url = new URL(isProfessorDevMode() ? "student-login-dev.html" : "student.html", window.location.href);
   url.searchParams.set("group", currentGroupId);
+  if (isProfessorDevMode()) {
+    url.searchParams.set("devMode", currentDevMode);
+  }
   if (getFirebaseUrl()) {
     url.searchParams.set("db", getFirebaseUrl());
   }
@@ -404,6 +444,9 @@ function buildStudentPortalUrl() {
 function switchGroup(groupId) {
   currentGroupId = normalizeGroupId(groupId);
   localStorage.setItem(GROUP_KEY, currentGroupId);
+  if (isProfessorDevMode()) {
+    localStorage.setItem(DEV_MODE_KEY, currentDevMode);
+  }
   Object.assign(state, loadState());
   render();
   loadConfigFromBackend();
@@ -479,11 +522,6 @@ function endOfDay(dateString) {
 }
 
 function nextWeekLineStep() {
-  const lastWeek = state.weeks.at(-1);
-  const previousWeek = state.weeks.at(-2);
-  if (lastWeek && previousWeek) {
-    return Math.max(1, lastWeek.start - previousWeek.start);
-  }
   return 10;
 }
 

@@ -21,15 +21,25 @@ const elements = {
 
 const FIREBASE_URL_KEY = "shatibiyya-firebase-url";
 const GROUP_KEY = "shatibiyya-active-group";
+const DEV_MODE_KEY = "shatibiyya-dev-mode";
 const AUTH_SESSION_KEY = "shatibiyya-login-test-session";
 const TEST_GROUP_STORAGE_IDS = {
-  group1: "login-test-group1",
-  group2: "login-test-group2",
+  data: {
+    group1: "login-test-group1",
+    group2: "login-test-group2",
+  },
+  test: {
+    group1: "login-sandbox-group1",
+    group2: "login-sandbox-group2",
+  },
 };
 const TEST_REMOTE_URL = "https://houssemhfaidh.github.io/groupe-shatibiyya/student-login-test.html";
 const DEFAULT_GROUP_ID = "group1";
 const VALID_GROUP_IDS = ["group1", "group2"];
+const DEFAULT_DEV_MODE = "data";
+const VALID_DEV_MODES = ["data", "test"];
 let currentGroupId = initialGroupId();
+let currentDevMode = initialDevMode();
 let currentConfig = null;
 let currentAuthSession = readAuthSession();
 let currentUserProfile = null;
@@ -39,6 +49,12 @@ function initialGroupId() {
   const saved = localStorage.getItem(GROUP_KEY);
   const groupId = fromQuery || saved || DEFAULT_GROUP_ID;
   return VALID_GROUP_IDS.includes(groupId) ? groupId : DEFAULT_GROUP_ID;
+}
+
+function initialDevMode() {
+  const fromQuery = new URLSearchParams(window.location.search).get("devMode");
+  const configured = fromQuery || window.SHATIBIYYA_DEFAULT_DEV_MODE || localStorage.getItem(DEV_MODE_KEY) || DEFAULT_DEV_MODE;
+  return VALID_DEV_MODES.includes(configured) ? configured : DEFAULT_DEV_MODE;
 }
 
 function weekLabel(week) {
@@ -120,6 +136,7 @@ function getFirebaseUrl() {
     localStorage.setItem(FIREBASE_URL_KEY, cleaned);
   }
   localStorage.setItem(GROUP_KEY, currentGroupId);
+  localStorage.setItem(DEV_MODE_KEY, currentDevMode);
   return cleaned;
 }
 
@@ -132,7 +149,8 @@ function firebasePath(path) {
 }
 
 function currentTestGroupStorageId() {
-  return TEST_GROUP_STORAGE_IDS[currentGroupId] || TEST_GROUP_STORAGE_IDS.group1;
+  const storageIds = TEST_GROUP_STORAGE_IDS[currentDevMode] || TEST_GROUP_STORAGE_IDS.data;
+  return storageIds[currentGroupId] || storageIds.group1;
 }
 
 function groupPath(path) {
@@ -216,7 +234,8 @@ async function profileForEmail(email) {
 
   if (window.SHATIBIYYA_EMAIL_ONLY_LOGIN && getFirebaseUrl()) {
     const emailHash = await sha256Hex(normalizedEmail);
-    for (const [groupId, storageId] of Object.entries(TEST_GROUP_STORAGE_IDS)) {
+    const storageIds = TEST_GROUP_STORAGE_IDS[currentDevMode] || TEST_GROUP_STORAGE_IDS.data;
+    for (const [groupId, storageId] of Object.entries(storageIds)) {
       const profile = await firebaseRequest(`config/groups/${storageId}/loginEmails/${emailHash}`);
       if (profile) return { ...profile, groupId: profile.groupId || groupId };
     }
@@ -342,6 +361,7 @@ function applyAuthenticatedProfile(profile) {
   currentUserProfile = profile;
   currentGroupId = profile.groupId;
   localStorage.setItem(GROUP_KEY, currentGroupId);
+  localStorage.setItem(DEV_MODE_KEY, currentDevMode);
   elements.accountName.textContent = `${profile.studentName} - ${groupLabel(profile.groupId)}`;
   elements.loginPanel.hidden = true;
   elements.studentPanel.hidden = false;

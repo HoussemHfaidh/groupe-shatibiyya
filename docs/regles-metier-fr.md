@@ -14,8 +14,8 @@ Ce document résume les règles validées ensemble pour éviter les régressions
 - La liste des semaines se base sur la configuration du groupe.
 - Par défaut, la dernière semaine est sélectionnée.
 - Le bouton `Créer la semaine prochaine` ajoute 7 jours à la dernière semaine.
-- La nouvelle plage reprend le pas entre les deux dernières plages.
-- Exemple: après `de 1061 à 1080`, la semaine suivante devient `de 1081 à 1100`.
+- La nouvelle plage ajoute toujours 10 au début et 10 à la fin.
+- Exemple: après `de 1061 à 1080`, la semaine suivante devient `de 1071 à 1090`.
 
 ## États du tableau professeur
 
@@ -65,14 +65,26 @@ Ce document résume les règles validées ensemble pour éviter les régressions
 ## Séparation dev/prod
 
 - La page dev ne doit pas écrire dans les chemins prod.
-- Groupe 1 dev:
+- La page professeur en mode test est `prof-login-dev.html`.
+- Cette page utilise la même interface professeur, mais écrit seulement dans les chemins de test.
+- Le mode données utilise `devMode=data`.
+- Le mode test utilise `devMode=test`.
+- Groupe 1 en mode données:
   `config/groups/login-test-group1`
   et
   `submissions/groups/login-test-group1`.
-- Groupe 2 dev:
+- Groupe 2 en mode données:
   `config/groups/login-test-group2`
   et
   `submissions/groups/login-test-group2`.
+- Groupe 1 en mode test:
+  `config/groups/login-sandbox-group1`
+  et
+  `submissions/groups/login-sandbox-group1`.
+- Groupe 2 en mode test:
+  `config/groups/login-sandbox-group2`
+  et
+  `submissions/groups/login-sandbox-group2`.
 - Les chemins prod restent séparés:
   `config`,
   `submissions`,
@@ -88,3 +100,13 @@ node tests/business-rules.test.mjs
 ```
 
 Si `node` n'est pas installé globalement sur ce Mac, Codex peut le lancer avec son runtime embarqué.
+
+## Données de test
+
+- On peut préparer des données de test uniquement pour le mode DEV.
+- Le script de données de test est `scripts/seed-dev-data.mjs`.
+- Ce script écrit seulement dans les chemins `login-sandbox-group1` et `login-sandbox-group2`.
+- Le script de refresh des données DEV est `scripts/refresh-dev-data.mjs`.
+- Le script de refresh écrit seulement dans les chemins `login-test-group1` et `login-test-group2`.
+- Il n'écrit pas dans les chemins prod.
+- Il ne supprime pas `loginEmails`.

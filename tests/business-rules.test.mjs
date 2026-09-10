@@ -132,9 +132,6 @@ function applySubmissionsBusiness(state, weekId) {
 }
 
 function nextWeekLineStep(weeks) {
-  const lastWeek = weeks.at(-1);
-  const previousWeek = weeks.at(-2);
-  if (lastWeek && previousWeek) return Math.max(1, lastWeek.start - previousWeek.start);
   return 10;
 }
 
@@ -288,15 +285,15 @@ test("un élève connecté ne peut pas se confirmer lui-même ni confirmer un é
   assert.equal(options.waitingStudents.includes("أمين"), false);
 });
 
-test("le bouton créer la semaine prochaine reprend le pas des lignes et ajoute 7 jours", () => {
+test("le bouton créer la semaine prochaine ajoute toujours 10 lignes et 7 jours", () => {
   const next = createNextWeekCandidate([
     { id: "2026-08-29-1041-1060", start: 1041, end: 1060, date: "2026-08-29" },
     { id: "2026-09-05-1061-1080", start: 1061, end: 1080, date: "2026-09-05" },
   ]);
   assert.deepEqual(next, {
-    id: "2026-09-12-1081-1100",
-    start: 1081,
-    end: 1100,
+    id: "2026-09-12-1071-1090",
+    start: 1071,
+    end: 1090,
     date: "2026-09-12",
   });
 });
@@ -306,12 +303,39 @@ test("la page login-dev reste sur les chemins de test et ne force pas les chemin
   const html = readProjectFile("student-login-dev.html");
   const config = readProjectFile("config-login-test.js");
 
-  assertIncludes(js, 'group1: "login-test-group1"', "groupe 1 dev doit pointer sur login-test-group1");
-  assertIncludes(js, 'group2: "login-test-group2"', "groupe 2 dev doit pointer sur login-test-group2");
+  assertIncludes(js, 'group1: "login-test-group1"', "mode données groupe 1 doit pointer sur login-test-group1");
+  assertIncludes(js, 'group2: "login-test-group2"', "mode données groupe 2 doit pointer sur login-test-group2");
+  assertIncludes(js, 'group1: "login-sandbox-group1"', "mode test groupe 1 doit pointer sur login-sandbox-group1");
+  assertIncludes(js, 'group2: "login-sandbox-group2"', "mode test groupe 2 doit pointer sur login-sandbox-group2");
+  assertIncludes(js, 'new URLSearchParams(window.location.search).get("devMode")', "la page élève dev doit lire devMode");
   assertIncludes(js, "config/groups/${storageId}", "la config dev doit utiliser le storageId de test");
   assertIncludes(js, "submissions/groups/${storageId}", "les réponses dev doivent utiliser le storageId de test");
   assertIncludes(config, "window.SHATIBIYYA_EMAIL_ONLY_LOGIN = true", "le login dev doit rester en email uniquement");
   assert.ok(!html.includes('id="loginPassword"'), "la page dev ne doit pas afficher un champ mot de passe");
+});
+
+test("la page prof-dev utilise les chemins de test et ouvre la page élève dev", () => {
+  const app = readProjectFile("app.js");
+  const html = readProjectFile("prof-login-dev.html");
+  const seedScript = readProjectFile("scripts/seed-dev-data.mjs");
+  const refreshScript = readProjectFile("scripts/refresh-dev-data.mjs");
+
+  assertIncludes(app, 'group1: "login-test-group1"', "prof-dev données groupe 1 doit pointer sur login-test-group1");
+  assertIncludes(app, 'group2: "login-test-group2"', "prof-dev données groupe 2 doit pointer sur login-test-group2");
+  assertIncludes(app, 'group1: "login-sandbox-group1"', "prof-dev test groupe 1 doit pointer sur login-sandbox-group1");
+  assertIncludes(app, 'group2: "login-sandbox-group2"', "prof-dev test groupe 2 doit pointer sur login-sandbox-group2");
+  assertIncludes(app, "SHATIBIYYA_PROFESSOR_DEV_MODE", "un flag doit activer le mode prof-dev");
+  assertIncludes(app, 'isProfessorDevMode() ? "student-login-dev.html" : "student.html"', "le lien élève dev doit ouvrir student-login-dev");
+  assertIncludes(app, 'url.searchParams.set("devMode", currentDevMode)', "le lien élève dev doit garder le même mode");
+  assertIncludes(app, 'currentGroupId === DEFAULT_GROUP_ID || isProfessorDevMode() ? "PATCH" : "PUT"', "prof-dev doit préserver loginEmails avec PATCH");
+  assertIncludes(html, "window.SHATIBIYYA_PROFESSOR_DEV_MODE = true", "la page prof-dev doit activer le mode dev");
+  assertIncludes(html, "config-login-test.js", "la page prof-dev doit utiliser la config test");
+  assertIncludes(seedScript, 'testStorageId: "login-sandbox-group1"', "le seed TEST doit pointer sur login-sandbox-group1");
+  assertIncludes(seedScript, 'testStorageId: "login-sandbox-group2"', "le seed TEST doit pointer sur login-sandbox-group2");
+  assertIncludes(refreshScript, 'storageId: "login-test-group1"', "le refresh données doit pointer sur login-test-group1");
+  assertIncludes(refreshScript, 'storageId: "login-test-group2"', "le refresh données doit pointer sur login-test-group2");
+  assert.ok(!seedScript.includes('firebaseRequest("config"'), "le seed DEV ne doit pas écrire dans config prod");
+  assert.ok(!seedScript.includes('firebaseRequest("submissions"'), "le seed DEV ne doit pas écrire dans submissions prod");
 });
 
 test("l'élève connecté applique immédiatement son statut dans la config dev après envoi", () => {
