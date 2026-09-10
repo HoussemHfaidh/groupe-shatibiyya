@@ -22,7 +22,10 @@ const elements = {
 const FIREBASE_URL_KEY = "shatibiyya-firebase-url";
 const GROUP_KEY = "shatibiyya-active-group";
 const AUTH_SESSION_KEY = "shatibiyya-login-test-session";
-const TEST_GROUP_STORAGE_ID = "login-test-group1";
+const TEST_GROUP_STORAGE_IDS = {
+  group1: "login-test-group1",
+  group2: "login-test-group2",
+};
 const TEST_REMOTE_URL = "https://houssemhfaidh.github.io/groupe-shatibiyya/student-login-test.html";
 const DEFAULT_GROUP_ID = "group1";
 const VALID_GROUP_IDS = ["group1", "group2"];
@@ -128,11 +131,16 @@ function firebasePath(path) {
   return url.toString();
 }
 
+function currentTestGroupStorageId() {
+  return TEST_GROUP_STORAGE_IDS[currentGroupId] || TEST_GROUP_STORAGE_IDS.group1;
+}
+
 function groupPath(path) {
-  if (path === "config") return `config/groups/${TEST_GROUP_STORAGE_ID}`;
-  if (path.startsWith("config/")) return `config/groups/${TEST_GROUP_STORAGE_ID}/${path.slice("config/".length)}`;
-  if (path === "submissions") return `submissions/groups/${TEST_GROUP_STORAGE_ID}`;
-  if (path.startsWith("submissions/")) return `submissions/groups/${TEST_GROUP_STORAGE_ID}/${path.slice("submissions/".length)}`;
+  const storageId = currentTestGroupStorageId();
+  if (path === "config") return `config/groups/${storageId}`;
+  if (path.startsWith("config/")) return `config/groups/${storageId}/${path.slice("config/".length)}`;
+  if (path === "submissions") return `submissions/groups/${storageId}`;
+  if (path.startsWith("submissions/")) return `submissions/groups/${storageId}/${path.slice("submissions/".length)}`;
   return path;
 }
 
@@ -208,7 +216,11 @@ async function profileForEmail(email) {
 
   if (window.SHATIBIYYA_EMAIL_ONLY_LOGIN && getFirebaseUrl()) {
     const emailHash = await sha256Hex(normalizedEmail);
-    return firebaseRequest(`config/groups/${TEST_GROUP_STORAGE_ID}/loginEmails/${emailHash}`);
+    for (const [groupId, storageId] of Object.entries(TEST_GROUP_STORAGE_IDS)) {
+      const profile = await firebaseRequest(`config/groups/${storageId}/loginEmails/${emailHash}`);
+      if (profile) return { ...profile, groupId: profile.groupId || groupId };
+    }
+    return null;
   }
 
   return window.SHATIBIYYA_LOGIN_TEST_PROFILE || null;
