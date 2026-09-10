@@ -673,13 +673,13 @@ async function handleLogin(event) {
       return;
     }
 
-    const session = await signInWithPassword(elements.loginEmail.value, elements.loginPassword.value);
+    const session = await signInWithPassword(elements.loginEmail.value, elements.loginPassword?.value || "");
     const profile = await profileForEmail(session.email);
     if (!profile || profile.role !== "student") {
       throw new Error("هذا الحساب غير مسموح له بالدخول إلى بوابة الطالب.");
     }
     saveAuthSession(session);
-    elements.loginPassword.value = "";
+    if (elements.loginPassword) elements.loginPassword.value = "";
     applyAuthenticatedProfile(profile);
     await loadConfig();
   } catch (error) {
