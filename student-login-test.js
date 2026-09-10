@@ -3,6 +3,7 @@ const elements = {
   studentPanel: document.querySelector("#studentPanel"),
   loginForm: document.querySelector("#loginForm"),
   loginEmail: document.querySelector("#loginEmail"),
+  keepSessionOpen: document.querySelector("#keepSessionOpen"),
   loginPassword: document.querySelector("#loginPassword"),
   resetPasswordBtn: document.querySelector("#resetPasswordBtn"),
   loginResult: document.querySelector("#loginResult"),
@@ -645,7 +646,9 @@ async function handleLogin(event) {
       saveAuthSession({
         email,
         emailOnly: true,
-        expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 180,
+        expiresAt: elements.keepSessionOpen?.checked
+          ? Date.now() + 1000 * 60 * 60 * 24 * 180
+          : Date.now() + 1000 * 60 * 60 * 4,
       });
       applyAuthenticatedProfile(profile);
       await loadConfig();

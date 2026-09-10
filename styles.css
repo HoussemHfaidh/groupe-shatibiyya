@@ -614,6 +614,21 @@ textarea {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
+.remember-session {
+  align-items: center;
+  color: #33435c;
+  display: flex;
+  font-size: 14px;
+  font-weight: 800;
+  gap: 10px;
+  margin: 2px 0 14px;
+}
+
+.remember-session input {
+  min-height: 18px;
+  width: 18px;
+}
+
 .status-choice {
   border: 1px solid var(--line);
   border-radius: 8px;
