@@ -12,7 +12,7 @@
         <p class="eyebrow">الشاطبية - اختبار الدخول</p>
         <h1>تسجيل الدخول</h1>
         <p class="subtitle">
-          ادخل بالبريد الإلكتروني وكلمة المرور التي أنشأها الأستاذ في Firebase.
+          ادخل بالبريد الإلكتروني المسجل عند الأستاذ.
         </p>
 
         <form id="loginForm" class="student-form">
@@ -21,14 +21,13 @@
             <input id="loginEmail" type="email" autocomplete="username" required />
           </label>
 
-          <label class="field">
+          <label class="field" hidden>
             <span>كلمة المرور</span>
-            <input id="loginPassword" type="password" autocomplete="current-password" required />
+            <input id="loginPassword" type="password" autocomplete="current-password" />
           </label>
 
           <div class="login-actions">
             <button class="primary" type="submit">دخول</button>
-            <button id="resetPasswordBtn" class="secondary" type="button">نسيت كلمة المرور</button>
           </div>
         </form>
 
@@ -85,7 +84,7 @@
       </section>
     </main>
 
-    <script src="config-login-test.js?v=20260907-login-remote-test"></script>
-    <script src="student-login-test.js?v=20260910-password-reset"></script>
+    <script src="config-login-test.js?v=20260910-email-only"></script>
+    <script src="student-login-test.js?v=20260910-email-only"></script>
   </body>
 </html>

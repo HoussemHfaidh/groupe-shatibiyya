@@ -1,5 +1,6 @@
 window.SHATIBIYYA_FIREBASE_DB_URL = "https://groupe-shatibiyya-default-rtdb.asia-southeast1.firebasedatabase.app";
 window.SHATIBIYYA_LOGIN_TEST_LOCAL_ONLY = false;
+window.SHATIBIYYA_EMAIL_ONLY_LOGIN = true;
 
 window.SHATIBIYYA_FIREBASE_AUTH_CONFIG = {
   apiKey: "AIzaSyBU4dxW0VWw4kK5oeFF-BWOtcLaqoyrE7k",

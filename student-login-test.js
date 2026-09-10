@@ -210,8 +210,21 @@ function normalizeEmail(email) {
   return email.trim().toLowerCase();
 }
 
+async function sha256Hex(value) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 async function profileForEmail(email) {
-  if (!normalizeEmail(email)) return null;
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return null;
+
+  if (window.SHATIBIYYA_EMAIL_ONLY_LOGIN && getFirebaseUrl()) {
+    const emailHash = await sha256Hex(normalizedEmail);
+    return firebaseRequest(`config/groups/${TEST_GROUP_STORAGE_ID}/loginEmails/${emailHash}`);
+  }
+
   return window.SHATIBIYYA_LOGIN_TEST_PROFILE || null;
 }
 
@@ -285,6 +298,7 @@ async function refreshAuthSession(session) {
 
 async function ensureFreshAuthSession() {
   if (!currentAuthSession) return null;
+  if (currentAuthSession.emailOnly) return currentAuthSession;
   if (currentAuthSession.expiresAt > Date.now()) return currentAuthSession;
   const refreshed = await refreshAuthSession(currentAuthSession);
   saveAuthSession(refreshed);
@@ -642,6 +656,23 @@ async function handleLogin(event) {
   event.preventDefault();
   elements.loginResult.textContent = "جار تسجيل الدخول...";
   try {
+    if (window.SHATIBIYYA_EMAIL_ONLY_LOGIN) {
+      const email = normalizeEmail(elements.loginEmail.value);
+      clearAuthSession();
+      const profile = await profileForEmail(email);
+      if (!profile || profile.role !== "student") {
+        throw new Error("هذا البريد الإلكتروني غير مسجل عند الأستاذ.");
+      }
+      saveAuthSession({
+        email,
+        emailOnly: true,
+        expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 180,
+      });
+      applyAuthenticatedProfile(profile);
+      await loadConfig();
+      return;
+    }
+
     const session = await signInWithPassword(elements.loginEmail.value, elements.loginPassword.value);
     const profile = await profileForEmail(session.email);
     if (!profile || profile.role !== "student") {
@@ -681,7 +712,7 @@ async function handlePasswordReset() {
 
 elements.form.addEventListener("submit", submitResponse);
 elements.loginForm.addEventListener("submit", handleLogin);
-elements.resetPasswordBtn.addEventListener("click", handlePasswordReset);
+elements.resetPasswordBtn?.addEventListener("click", handlePasswordReset);
 elements.logoutBtn.addEventListener("click", handleLogout);
 elements.weekSelect.addEventListener("change", () => renderWeekState());
 
