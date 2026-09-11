@@ -1,0 +1,23 @@
+{
+  "rules": {
+    "config": {
+      ".read": true,
+      ".write": true
+    },
+    "submissions": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": [
+        "weekId"
+      ]
+    },
+    "jam": {
+      "groups": {
+        "$group": {
+          ".read": "$group === 'login-test-group1' || $group === 'login-test-group2' || $group === 'login-sandbox-group1' || $group === 'login-sandbox-group2'",
+          ".write": "$group === 'login-test-group1' || $group === 'login-test-group2' || $group === 'login-sandbox-group1' || $group === 'login-sandbox-group2'"
+        }
+      }
+    }
+  }
+}

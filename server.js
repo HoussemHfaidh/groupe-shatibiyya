@@ -57,6 +57,7 @@ let store = {
   statuses: buildRecoveredStatuses(),
   readyOrder: buildRecoveredReadyOrder(),
   submissions: [],
+  jam: {},
 };
 
 async function loadStore() {
@@ -73,6 +74,7 @@ async function loadStore() {
       readyOrder: parsed.readyOrder && Object.keys(parsed.readyOrder).length
         ? { ...buildRecoveredReadyOrder(), ...parsed.readyOrder }
         : buildRecoveredReadyOrder(),
+      jam: parsed.jam || {},
       submissions: Array.isArray(parsed.submissions) ? parsed.submissions : [],
     };
   } catch (error) {
@@ -203,6 +205,28 @@ function readBody(request) {
 }
 
 async function handleApi(request, response, url) {
+  const jamMatch = url.pathname.match(/^\/api\/jam\/(login-(?:test|sandbox)-group[12])$/);
+  if (jamMatch && ["GET", "PUT"].includes(request.method)) {
+    const id = jamMatch[1];
+    if (request.method === "GET") {
+      sendJson(response, 200, store.jam[id] || { value: {}, revision: 0 });
+      return;
+    }
+    const body = await readBody(request);
+    const current = store.jam[id] || { value: {}, revision: 0 };
+    if (body.revision !== current.revision) {
+      sendJson(response, 409, { error: "تغيرت القائمة. أعد المحاولة." });
+      return;
+    }
+    if (!body.value || typeof body.value !== "object" || Array.isArray(body.value)) {
+      sendJson(response, 400, { error: "بيانات غير صحيحة." });
+      return;
+    }
+    store.jam[id] = { value: body.value, revision: current.revision + 1 };
+    await saveStore();
+    sendJson(response, 200, { ok: true });
+    return;
+  }
   if (request.method === "GET" && url.pathname === "/api/config") {
     sendJson(response, 200, {
       students: store.students,

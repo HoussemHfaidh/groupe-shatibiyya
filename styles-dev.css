@@ -1,0 +1,48 @@
+@import url("styles.css?v=20260910");
+
+/* واجب الجمع */
+.jam-navigation { margin-block: 1rem; }
+.jam-navigation [aria-pressed="true"] { background: #165b43; color: white; }
+.jam-panel { margin-block: 1rem; min-width: 0; }
+.jam-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-block: 1rem; }
+.jam-columns .validator-option { overflow-wrap: anywhere; white-space: pre-wrap; }
+.jam-columns .validator-list { display: grid; grid-template-columns: 1fr; }
+[hidden] { display: none !important; }
+@media (max-width: 600px) { .jam-columns { grid-template-columns: 1fr; } }
+
+.jam-professor-navigation, .jam-professor { grid-column: 1 / -1; }
+.jam-professor-navigation { display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; }
+.jam-professor-navigation .field { min-width: 200px; }
+.jam-professor .jam-columns { grid-template-columns: 1fr; }
+.jam-professor .jam-columns .validator-list { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.jam-tracking-table caption { font-size: 1.3rem; font-weight: bold; padding: 1rem; }
+.jam-tracking-table .jam-done { background: #dcf5df; color: #175b2b; }
+.jam-tracking-table .jam-missed { background: #ffe1e3; color: #8e2030; }
+.jam-tracking-table th, .jam-tracking-table td { border: 1px solid #bcc8d8; padding: .7rem; }
+.jam-tracking-table tfoot { font-weight: bold; }
+
+.jam-tracking-table { width: 100%; min-width: 320px; table-layout: auto; }
+.jam-tracking-table th:first-child, .jam-tracking-table td:first-child { width: 32px; }
+.jam-tracking-table tbody th { background: white; }
+@media (max-width: 600px) {
+  .jam-professor-navigation { gap: .5rem; }
+  .jam-professor-navigation .jam-navigation { flex: 1; }
+  .jam-tracking-table th, .jam-tracking-table td { padding: .35rem; }
+}
+
+/* Reserve the first DEV row for navigation above both recitation columns. */
+.layout.has-jam-navigation > .jam-professor-navigation { grid-row: 1; }
+.layout.has-jam-navigation > .table-panel { grid-row: 2 / span 3; align-self: start; }
+@media (max-width: 1050px) {
+  .layout.has-jam-navigation { display: flex; flex-direction: column; }
+  .layout.has-jam-navigation > .jam-professor-navigation { order: 0; }
+  .layout.has-jam-navigation > .table-panel,
+  .layout.has-jam-navigation > .jam-professor { order: 1; }
+  .layout.has-jam-navigation > .controls-panel { order: 2; }
+  .layout.has-jam-navigation > .setup-panel { order: 3; }
+  .layout.has-jam-navigation > .chain-panel { order: 4; }
+  .layout.has-jam-navigation > .panel { margin-block: 0; }
+}
+@media (max-width: 1050px) {
+  .layout.has-jam-navigation > .table-panel { align-self: stretch; width: 100%; }
+}

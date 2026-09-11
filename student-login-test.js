@@ -213,6 +213,7 @@ function saveAuthSession(session) {
 }
 
 function clearAuthSession() {
+  window.Jam?.logout();
   currentAuthSession = null;
   currentUserProfile = null;
   localStorage.removeItem(AUTH_SESSION_KEY);
@@ -441,6 +442,16 @@ async function loadConfig() {
     }
 
     currentConfig = config;
+    window.Jam?.mount({
+      role: "student",
+      schedule: window.SHATIBIYYA_JAM_SCHEDULES?.[currentGroupId],
+      name: currentUserProfile?.studentName,
+      students: config.students,
+      storageId: currentTestGroupStorageId(),
+      host: elements.studentPanel,
+      prepare: ensureFreshAuthSession,
+      firebaseUrl: ((storageId) => () => getFirebaseUrl() ? firebasePath(`jam/groups/${storageId}`) : "")(currentTestGroupStorageId()),
+    });
     renderWeeks(config, previousWeek);
     renderWeekState(previousValidator, previousStudent);
     elements.result.textContent = "البوابة جاهزة.";

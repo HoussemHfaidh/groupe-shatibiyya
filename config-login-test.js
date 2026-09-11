@@ -17,3 +17,12 @@ window.SHATIBIYYA_LOGIN_TEST_PROFILE = {
   groupId: "group1",
   studentName: "حسام حفيظ",
 };
+
+// Independent weekly calendar for واجب الجمع (DEV only).
+window.SHATIBIYYA_JAM_SCHEDULES = {
+  group1: { number: 45, startDate: "2026-09-05", timeZone: "Europe/Paris" },
+  group2: { number: 45, startDate: "2026-09-06", timeZone: "Europe/Paris" },
+};
+
+// Local DEV shares Jam through server.js until the dedicated Firebase rules are deployed.
+window.SHATIBIYYA_JAM_LOCAL_DEV ??= ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
