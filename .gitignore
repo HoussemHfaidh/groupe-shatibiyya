@@ -1,2 +1,6 @@
 data/
 .DS_Store
+
+# Local deployment notes and one-off migration contain private operational data.
+docs/mise-en-production-2026-09-12.md
+scripts/migrate-prod-20260912.cjs

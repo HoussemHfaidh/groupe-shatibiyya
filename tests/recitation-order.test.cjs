@@ -1,0 +1,18 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const source = fs.readFileSync('student-login-test.js', 'utf8');
+const functionSource = source.slice(source.indexOf('function orderedGreenStudents('), source.indexOf('\nfunction renderAvailabilityList('));
+const config = {students:['A','B','C','D'], statuses:{A:'done',B:'done',C:'done',D:'missed'},readyOrder:{w:['A','B','C']}};
+const ctx = vm.createContext({currentConfig:config,isGreenStudent:(c,s)=>c.statuses[s]==='done',statusKey:(s,w)=>`${s}__${w}`});
+vm.runInContext(functionSource,ctx);
+const ordered = () => Array.from(vm.runInContext('orderedGreenStudents("w")',ctx));
+assert.deepEqual(ordered(),['C','B','A']);
+assert.deepEqual(config.readyOrder.w,['A','B','C']);
+config.readyAt = {'A__w':100,'B__w':300,'C__w':200,'D__w':400};
+assert.deepEqual(ordered(),['B','C','A']);
+config.statuses.D='done';
+assert.deepEqual(ordered(),['D','B','C','A']);
+config.readyAt['A__other']=999;
+assert.deepEqual(ordered(),['D','B','C','A']);
+console.log('✓ Actual student ordering: latest first, legacy order preserved, independent weeks, reds excluded');

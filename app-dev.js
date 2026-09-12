@@ -343,6 +343,7 @@ async function loadConfigFromBackend() {
 }
 
 let syncTimer;
+const pendingReadyAt = {};
 function syncConfigToBackend() {
   clearTimeout(syncTimer);
   syncTimer = setTimeout(syncConfigNow, 350);
@@ -350,12 +351,15 @@ function syncConfigToBackend() {
 
 async function syncConfigNow() {
   try {
+    const readyStorageId = currentDevStorageId();
+    const readyTimes = { ...(pendingReadyAt[readyStorageId] || {}) };
     const config = {
       students: state.students,
       weeks: state.weeks,
       settings: state.settings,
       statuses: state.statuses,
       readyOrder: state.readyOrder,
+      ...Object.fromEntries(Object.entries(readyTimes).map(([key, value]) => [`readyAt/${key}`, value])),
     };
     if (getFirebaseUrl()) {
       await firebaseRequest(groupPath("config"), {
@@ -368,6 +372,8 @@ async function syncConfigNow() {
         body: JSON.stringify(config),
       });
     }
+    const pending = pendingReadyAt[readyStorageId] || {};
+    Object.entries(readyTimes).forEach(([key, value]) => { if (pending[key] === value) delete pending[key]; });
     updateBackendUi("تم حفظ الطلاب والأسابيع.");
   } catch {
     updateBackendUi(getFirebaseUrl() ? "تعذرت المزامنة مع Firebase." : "وضع محلي.");
@@ -533,20 +539,14 @@ function findWeek(weekId) {
 }
 
 function weekDeadline(week) {
-  if (!week?.date) return null;
-  const deadline = endOfDay(week.date);
-  const boundaryDay = state.settings.weekBoundaryDay;
-  let dayOffset = (boundaryDay - deadline.getDay() + 7) % 7;
-  if (dayOffset === 0) dayOffset = 7;
-  deadline.setDate(deadline.getDate() + dayOffset);
-  return deadline;
+  return WeeklyClock.deadline(week, state.settings.weekBoundaryDay);
 }
 
 function isLateSubmission(submission) {
   const week = findWeek(submission.weekId);
   const deadline = weekDeadline(week);
   if (!deadline || !submission.createdAt) return false;
-  return new Date(submission.createdAt) > deadline;
+  return new Date(submission.createdAt) >= deadline;
 }
 
 function effectiveSubmissionStatus(submission) {
@@ -566,6 +566,11 @@ function getStatus(studentName, weekId) {
 
 function setStatus(studentName, weekId, status) {
   const key = statusKey(studentName, weekId);
+  if (status === "done" && state.statuses[key] !== "done") {
+    const storageId = currentDevStorageId();
+    pendingReadyAt[storageId] ||= {};
+    pendingReadyAt[storageId][key] = Date.now();
+  }
   if (status) {
     state.statuses[key] = status;
   } else {
@@ -1441,7 +1446,7 @@ function drawTotalRow(context, columns, y, height) {
 
 function statusColor(status) {
   if (status === "done") return "#8bd34a";
-  if (status === "makeup") return "#ffc20a";
+  if (status === "makeup") return "#f6a43a";
   if (status === "missed") return "#f6bac3";
   return "#ffffff";
 }

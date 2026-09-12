@@ -327,7 +327,7 @@ test("la page prof-dev utilise les chemins de test et ouvre la page élève dev"
   assertIncludes(app, "SHATIBIYYA_PROFESSOR_DEV_MODE", "un flag doit activer le mode prof-dev");
   assertIncludes(app, 'isProfessorDevMode() ? "student-login-dev.html" : "student.html"', "le lien élève dev doit ouvrir student-login-dev");
   assertIncludes(app, 'url.searchParams.set("devMode", currentDevMode)', "le lien élève dev doit garder le même mode");
-  assertIncludes(app, 'currentGroupId === DEFAULT_GROUP_ID || isProfessorDevMode() ? "PATCH" : "PUT"', "prof-dev doit préserver loginEmails avec PATCH");
+  assertIncludes(app.slice(app.indexOf('async function syncConfigNow()'), app.indexOf('async function loadSubmissions()')), 'method: "PATCH"', "la synchronisation doit préserver loginEmails avec PATCH");
   assertIncludes(html, "window.SHATIBIYYA_PROFESSOR_DEV_MODE = true", "la page prof-dev doit activer le mode dev");
   assertIncludes(html, "config-login-test.js", "la page prof-dev doit utiliser la config test");
   assertIncludes(seedScript, 'testStorageId: "login-sandbox-group1"', "le seed TEST doit pointer sur login-sandbox-group1");

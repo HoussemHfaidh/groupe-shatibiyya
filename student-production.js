@@ -22,7 +22,7 @@ const elements = {
 const FIREBASE_URL_KEY = "shatibiyya-firebase-url";
 const GROUP_KEY = "shatibiyya-active-group";
 const DEV_MODE_KEY = "shatibiyya-dev-mode";
-const AUTH_SESSION_KEY = "shatibiyya-login-test-session";
+const AUTH_SESSION_KEY = window.SHATIBIYYA_PRODUCTION_MODE ? "shatibiyya-production-session" : "shatibiyya-login-test-session";
 const TEST_GROUP_STORAGE_IDS = {
   data: {
     group1: "login-test-group1",
@@ -143,11 +143,13 @@ function firebasePath(path) {
 }
 
 function currentTestGroupStorageId() {
+  if (window.SHATIBIYYA_PRODUCTION_MODE) return currentGroupId;
   const storageIds = TEST_GROUP_STORAGE_IDS[currentDevMode] || TEST_GROUP_STORAGE_IDS.data;
   return storageIds[currentGroupId] || storageIds.group1;
 }
 
 function groupPath(path) {
+  if (window.SHATIBIYYA_PRODUCTION_MODE) return productionGroupPath(path);
   const storageId = currentTestGroupStorageId();
   if (path === "config") return `config/groups/${storageId}`;
   if (path.startsWith("config/")) return `config/groups/${storageId}/${path.slice("config/".length)}`;
@@ -229,9 +231,10 @@ async function profileForEmail(email) {
 
   if (window.SHATIBIYYA_EMAIL_ONLY_LOGIN && getFirebaseUrl()) {
     const emailHash = await sha256Hex(normalizedEmail);
-    const storageIds = TEST_GROUP_STORAGE_IDS[currentDevMode] || TEST_GROUP_STORAGE_IDS.data;
+    const storageIds = window.SHATIBIYYA_PRODUCTION_MODE ? {group1:"group1",group2:"group2"} : (TEST_GROUP_STORAGE_IDS[currentDevMode] || TEST_GROUP_STORAGE_IDS.data);
     for (const [groupId, storageId] of Object.entries(storageIds)) {
-      const profile = await firebaseRequest(`config/groups/${storageId}/loginEmails/${emailHash}`);
+      const path = window.SHATIBIYYA_PRODUCTION_MODE && groupId === "group1" ? `config/loginEmails/${emailHash}` : `config/groups/${storageId}/loginEmails/${emailHash}`;
+      const profile = await firebaseRequest(path);
       if (profile) return { ...profile, groupId: profile.groupId || groupId };
     }
     return null;
@@ -411,10 +414,10 @@ async function loadConfig() {
     const previousValidator = elements.validatorSelect.value;
     const previousStudent = elements.studentSelect.value;
     let config = getFirebaseUrl()
-      ? await firebaseRequest(groupPath("config"))
+      ? (window.SHATIBIYYA_PRODUCTION_MODE ? await RecitationMaintenance.sync(firebasePath(groupPath("config"))) : await firebaseRequest(groupPath("config")))
       : await localRequest("/api/config");
 
-    if ((!config?.students?.length || !config?.weeks?.length) && getFirebaseUrl()) {
+    if (!window.SHATIBIYYA_PRODUCTION_MODE && (!config?.students?.length || !config?.weeks?.length) && getFirebaseUrl()) {
       const productionConfig = await firebaseRequest(productionGroupPath("config"));
       if (productionConfig?.students?.length && productionConfig?.weeks?.length) {
         config = {

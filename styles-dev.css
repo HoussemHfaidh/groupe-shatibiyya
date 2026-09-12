@@ -46,3 +46,6 @@
 @media (max-width: 1050px) {
   .layout.has-jam-navigation > .table-panel { align-self: stretch; width: 100%; }
 }
+
+/* Late recitation is orange; Jam retains only red/green. */
+:root { --yellow: #f6a43a; }

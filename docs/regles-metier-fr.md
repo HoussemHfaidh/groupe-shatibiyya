@@ -40,7 +40,7 @@ Ce document résume les règles validées ensemble pour éviter les régressions
 - La liste `الطلاب المتاحون` est dynamique selon la semaine choisie.
 - Les élèves validés apparaissent en premier.
 - Les élèves non disponibles apparaissent ensuite.
-- Les élèves validés gardent l'ordre d'approbation enregistré dans `readyOrder`.
+- Dans la liste verte élève, le dernier validé apparaît en premier : tri décroissant de `readyAt`, avec ordre `readyOrder` inversé comme secours pour les anciennes données. L'historique enregistré n'est pas inversé.
 - L'élève connecté peut confirmer uniquement s'il est lui-même validé pour cette semaine.
 - L'élève connecté ne peut pas se confirmer lui-même.
 - L'élève connecté ne peut pas choisir un élève déjà validé.

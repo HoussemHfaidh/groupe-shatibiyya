@@ -22,12 +22,12 @@ assert.equal(create(names, 'جديد', '1\n2\n3\n4', 'two').confirmations.length
 console.log('✓ واجب الجمع: first approval, all green validators, unique verses/students, independent assignments');
 const { weeklyWindow, active, current, ensureWeek } = require('../jam-model.js');
 const schedule = {number:45,startDate:'2026-09-05',timeZone:'Europe/Paris'};
-const before = new Date('2026-09-11T21:59:59Z');
-const boundary = new Date('2026-09-11T22:00:00Z');
+const before = new Date('2026-09-12T03:59:59Z');
+const boundary = new Date('2026-09-12T04:00:00Z');
 assert.equal(weeklyWindow(schedule,before).number,45);
 assert.equal(weeklyWindow(schedule,boundary).number,46);
 // Calendar weeks remain stable across the autumn DST change.
-assert.equal(weeklyWindow(schedule,new Date('2026-10-30T23:00:00Z')).number,53);
+assert.equal(weeklyWindow(schedule,new Date('2026-10-31T05:00:00Z')).number,53);
 let history = ensureWeek({},names,schedule,before);
 const id45 = weeklyWindow(schedule,before).id;
 history[id45] = {...base,...history[id45],verses:base.verses};
@@ -43,7 +43,7 @@ assert.equal(current(next,schedule,boundary).confirmations.length,0);
 assert.deepEqual(current(next,schedule,boundary).verses,names.map((_,index) => `الآية ${index+1}`));
 assert.equal(ensureWeek(next,names,schedule,boundary),next);
 assert.equal(ensureWeek({},names,null,before).constructor,Object);
-console.log('✓ Weekly Jam: 45→46 at Paris midnight, no catch-up, clean new week, history preserved, DST');
+console.log('✓ Weekly Jam: 45→46 at Paris 06:00, no catch-up, clean new week, history preserved, DST');
 
 const emptyWeek = {...next, 'week-2026-09-12': {...next['week-2026-09-12'], verses: []}};
 assert.equal(ensureWeek(emptyWeek,names,schedule,boundary)['week-2026-09-12'].verses.length,names.length);

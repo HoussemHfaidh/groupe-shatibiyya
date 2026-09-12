@@ -56,6 +56,7 @@ let store = {
   },
   statuses: buildRecoveredStatuses(),
   readyOrder: buildRecoveredReadyOrder(),
+  readyAt: {},
   submissions: [],
   jam: {},
 };
@@ -74,6 +75,7 @@ async function loadStore() {
       readyOrder: parsed.readyOrder && Object.keys(parsed.readyOrder).length
         ? { ...buildRecoveredReadyOrder(), ...parsed.readyOrder }
         : buildRecoveredReadyOrder(),
+      readyAt: parsed.readyAt || {},
       jam: parsed.jam || {},
       submissions: Array.isArray(parsed.submissions) ? parsed.submissions : [],
     };
@@ -234,6 +236,7 @@ async function handleApi(request, response, url) {
       settings: store.settings,
       statuses: store.statuses,
       readyOrder: store.readyOrder,
+      readyAt: store.readyAt,
     });
     return;
   }
@@ -244,6 +247,8 @@ async function handleApi(request, response, url) {
       sendJson(response, 400, { error: "الإعدادات غير صحيحة." });
       return;
     }
+    store.readyAt = { ...store.readyAt, ...(body.readyAt || {}) };
+    Object.entries(body).filter(([key]) => key.startsWith("readyAt/")).forEach(([key, value]) => { store.readyAt[key.slice(8)] = value; });
     store.students = body.students.map(String).filter(Boolean);
     store.settings = normalizeSettings(body.settings);
     store.statuses = body.statuses && typeof body.statuses === "object"
@@ -316,6 +321,7 @@ async function handleApi(request, response, url) {
         submission.late = body.late;
       }
       store.statuses[statusKey(student, weekId)] = appliedStatus;
+      store.readyAt[statusKey(student, weekId)] = Date.parse(createdAt) || Date.now();
       if (appliedStatus === "done" || appliedStatus === "makeup") {
         addReadyStudent(weekId, student);
       }

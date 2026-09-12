@@ -4,6 +4,7 @@ const http = require('node:http');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const model = require('../jam-model.js');
+const production = process.env.TEST_PRODUCTION === '1';
 (async () => {
   const root = path.resolve(__dirname, '..');
   const server = http.createServer(async (req, res) => {
@@ -26,16 +27,16 @@ const model = require('../jam-model.js');
     let assignment = model.create(students, 'واجب الجمع الأول', 'البقرة — 1\nالبقرة — 2\nالبقرة — 3', 'one');
     assignment = { ...assignment, ...model.weeklyWindow({number:45,startDate:'2026-09-05',timeZone:'Europe/Paris'},new Date('2026-09-11T10:00:00Z')) };
     let jam = { [assignment.id]: assignment }, revision = 1, writes = 0, conflict = false;
-    await page.addInitScript(() => localStorage.setItem('shatibiyya-login-test-session', JSON.stringify({email:'student@example.test',emailOnly:true,expiresAt:Date.now()+1000000})));
+    await page.addInitScript(production => localStorage.setItem(production ? 'shatibiyya-production-session' : 'shatibiyya-login-test-session', JSON.stringify({email:'student@example.test',emailOnly:true,expiresAt:Date.now()+1000000})), production);
     await page.context().route('https://**/*', async route => {
       const request = route.request(), url = new URL(request.url());
       let value;
       const headers = { 'access-control-allow-origin':'*', 'access-control-allow-headers':'*', 'access-control-allow-methods':'GET,PUT,OPTIONS', 'access-control-expose-headers':'ETag', 'ETag':`"${revision}"` };
       if (request.method() === 'OPTIONS') return route.fulfill({status:204,headers});
       if (url.pathname.includes('loginEmails')) value = { role:'student',studentName:'أحمد',groupId:'group1' };
-      else if (url.pathname.startsWith('/config/')) value = {students,weeks:[{id:'week1',start:1,end:10,date:'2026-09-11'}],statuses:{'احمد__week1':'done'}};
-      else if (url.pathname.startsWith('/submissions/')) value = {};
-      else if (url.pathname === '/jam/groups/login-test-group1.json') {
+      else if ((url.pathname.startsWith('/config/') || url.pathname === '/config.json')) value = {students,weeks:[{id:'week1',start:1,end:10,date:'2026-09-11'}],statuses:{'احمد__week1':'done'}};
+      else if ((url.pathname.startsWith('/submissions/') || url.pathname === '/submissions.json')) value = {};
+      else if (url.pathname === (production ? '/jam/groups/group1.json' : '/jam/groups/login-test-group1.json')) {
         if (request.method() === 'PUT') {
           if (conflict) return route.fulfill({status:412,headers,body:'{}'});
           assert.equal(request.headers()['if-match'], `"${revision}"`);
@@ -45,7 +46,7 @@ const model = require('../jam-model.js');
       } else throw new Error(`Unexpected request: ${request.url()}`);
       await route.fulfill({status:200,headers,contentType:'application/json',body:JSON.stringify(value)});
     });
-    await page.goto(`http://127.0.0.1:${server.address().port}/student-login-dev.html`);
+    await page.goto(`http://127.0.0.1:${server.address().port}/${production ? "student.html" : "student-login-dev.html"}`);
     await page.getByRole('button',{name:'واجب الجمع',exact:true}).click();
     const panel = page.locator('.jam-panel');
     await panel.getByText('أحمد — غير معتمد',{exact:true}).waitFor();
@@ -56,7 +57,7 @@ const model = require('../jam-model.js');
     const professor = await page.context().newPage();
     await professor.clock.install({time:new Date('2026-09-11T10:00:00Z')});
     professor.on('pageerror',error => errors.push(error.message));
-    await professor.goto(`http://127.0.0.1:${server.address().port}/prof-login-dev.html?group=group1&devMode=data`);
+    await professor.goto(`http://127.0.0.1:${server.address().port}/${production ? "index.html" : "prof-login-dev.html"}?group=group1&devMode=data`);
     await professor.getByRole('button',{name:'واجب الجمع',exact:true}).click();
     const profPanel = professor.locator('.jam-panel');
     await profPanel.getByLabel('الطالب الذي سمّع عندي').selectOption('أحمد');
@@ -105,7 +106,7 @@ const model = require('../jam-model.js');
     assert.equal(await panel.getByRole('heading',{name:'واجب الجمع 45',exact:true}).count(),1);
     assert.equal(await panel.locator('select').count(),2); // No assignment/history selector.
     conflict = false;
-    await page.clock.setSystemTime(new Date('2026-09-11T22:00:00Z'));
+    await page.clock.setSystemTime(new Date('2026-09-12T04:00:00Z'));
     await panel.getByRole('button',{name:'تحديث القائمة'}).click();
     await panel.getByRole('heading',{name:'واجب الجمع 46',exact:true}).waitFor();
     await panel.getByText('أحمد — غير معتمد',{exact:true}).waitFor();

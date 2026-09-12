@@ -7,9 +7,11 @@
     if (!title.trim()) throw new Error("أدخل عنوان الواجب.");
     return { id, title: title.trim(), students: [...students], verses, confirmations: [], createdAt: new Date().toISOString() };
   }
-  function localDate(now, timeZone) {
+  function localDate(now, timeZone, boundaryHour = 6) {
     const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
-    return ["year", "month", "day"].map(type => parts.find(part => part.type === type).value).join("-");
+    const date = ["year", "month", "day"].map(type => parts.find(part => part.type === type).value).join("-");
+    const hour = Number(new Intl.DateTimeFormat("en-GB", {timeZone, hour:"2-digit", hourCycle:"h23"}).format(now));
+    return hour < boundaryHour ? new Date(Date.parse(date) - 86400000).toISOString().slice(0,10) : date;
   }
   function weeklyWindow(schedule, now = new Date()) {
     if (!schedule) return null;

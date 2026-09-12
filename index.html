@@ -3,17 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>متابعة الشاطبية</title>
-    <link rel="stylesheet" href="styles.css?v=20260902-arabic-only" />
+    <title>متابعة الشاطبية - متابعة الأستاذ</title>
+    <link rel="stylesheet" href="styles-dev.css?v=20260912-prod-1" />
   </head>
   <body>
     <header class="app-header">
       <div>
-        <p class="eyebrow">الشاطبية - حرز الأماني</p>
+        <p class="eyebrow">الشاطبية - متابعة الأستاذ</p>
         <h1>متابعة حفظ الطلاب</h1>
-        <p class="subtitle">
-          يرسل الطلاب تأكيدات التسميع عبر البوابة، ثم يتابع الأستاذ الجدول ويصدره كصورة عند الحاجة.
-        </p>
+        <p class="subtitle">متابعة التسميع وواجب الجمع لكل مجموعة.</p>
       </div>
       <div class="header-actions">
         <a id="studentPortalLink" class="link-button" href="student.html">بوابة الطالب</a>
@@ -63,7 +61,7 @@
         </div>
 
         <div id="syncStatus" class="result-box" aria-live="polite">
-          المصدر: المتصفح المحلي. أضف رابط Firebase.
+          المصدر: Firebase DEV.
         </div>
 
         <div id="submissionList" class="submission-list"></div>
@@ -200,7 +198,14 @@
       <a id="hiddenDownload" hidden></a>
     </template>
 
-    <script src="config.js?v=20260606-firebase-default"></script>
-    <script src="app.js?v=20260902-clean-group1-history"></script>
+    <script src="config-production.js?v=20260912-prod-1"></script>
+    <script>
+      window.SHATIBIYYA_PROFESSOR_DEV_MODE = false;
+    </script>
+    <script src="weekly-clock.js?v=20260912-prod-1"></script>
+    <script src="recitation-maintenance.js?v=20260912-prod-1"></script>
+    <script src="jam-model.js?v=20260912-prod-1"></script>
+    <script src="jam.js?v=20260912-prod-1"></script>
+    <script src="app.js?v=20260912-prod-1"></script>
   </body>
 </html>
