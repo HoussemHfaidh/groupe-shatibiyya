@@ -59,6 +59,7 @@ let store = {
   readyAt: {},
   submissions: [],
   jam: {},
+  review: {},
 };
 
 async function loadStore() {
@@ -77,6 +78,7 @@ async function loadStore() {
         : buildRecoveredReadyOrder(),
       readyAt: parsed.readyAt || {},
       jam: parsed.jam || {},
+      review: parsed.review || {},
       submissions: Array.isArray(parsed.submissions) ? parsed.submissions : [],
     };
   } catch (error) {
@@ -225,6 +227,28 @@ async function handleApi(request, response, url) {
       return;
     }
     store.jam[id] = { value: body.value, revision: current.revision + 1 };
+    await saveStore();
+    sendJson(response, 200, { ok: true });
+    return;
+  }
+  const reviewMatch = url.pathname.match(/^\/api\/review\/(login-(?:test|sandbox)-group[12])$/);
+  if (reviewMatch && ["GET", "PUT"].includes(request.method)) {
+    const id = reviewMatch[1];
+    if (request.method === "GET") {
+      sendJson(response, 200, store.review[id] || { value: {}, revision: 0 });
+      return;
+    }
+    const body = await readBody(request);
+    const current = store.review[id] || { value: {}, revision: 0 };
+    if (body.revision !== current.revision) {
+      sendJson(response, 409, { error: "تغيرت القائمة. أعد المحاولة." });
+      return;
+    }
+    if (!body.value || typeof body.value !== "object" || Array.isArray(body.value)) {
+      sendJson(response, 400, { error: "بيانات غير صحيحة." });
+      return;
+    }
+    store.review[id] = { value: body.value, revision: current.revision + 1 };
     await saveStore();
     sendJson(response, 200, { ok: true });
     return;

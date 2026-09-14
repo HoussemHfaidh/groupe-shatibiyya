@@ -26,6 +26,7 @@ const production = process.env.TEST_PRODUCTION === '1';
     const students = ['أحمد', 'علي', 'عمر'];
     let assignment = model.create(students, 'واجب الجمع الأول', 'البقرة — 1\nالبقرة — 2\nالبقرة — 3', 'one');
     assignment = { ...assignment, ...model.weeklyWindow({number:45,startDate:'2026-09-05',timeZone:'Europe/Paris'},new Date('2026-09-11T10:00:00Z')) };
+    let review = {};
     let profileGroup = "group1";
     let jam = { [assignment.id]: assignment }, revision = 1, writes = 0, conflict = false;
     await page.addInitScript(production => localStorage.setItem(production ? 'shatibiyya-production-session' : 'shatibiyya-login-test-session', JSON.stringify({email:'student@example.test',emailOnly:true,expiresAt:Date.now()+1000000})), production);
@@ -44,7 +45,7 @@ const production = process.env.TEST_PRODUCTION === '1';
           jam = request.postDataJSON(); writes++; revision++;
         }
         value = jam;
-      } else throw new Error(`Unexpected request: ${request.url()}`);
+      } else if(url.pathname.startsWith('/review/groups/login-')) { if(request.method()==='PUT') review=request.postDataJSON(); value=review; } else throw new Error(`Unexpected request: ${request.url()}`);
       await route.fulfill({status:200,headers,contentType:'application/json',body:JSON.stringify(value)});
     });
     await page.goto(`http://127.0.0.1:${server.address().port}/${production ? "student.html" : "student-login-dev.html"}`);
@@ -133,6 +134,25 @@ const production = process.env.TEST_PRODUCTION === '1';
     await page.locator('#loginEmail').fill('student@example.test');
     await page.locator('#loginForm button[type="submit"]').click();
     await page.getByRole('button',{name:'واجب الجمع',exact:true}).waitFor();
+    if(!production){
+      await page.getByRole('button',{name:'المراجعة',exact:true}).click();
+      const rp=page.locator('.review-panel');
+      await rp.getByLabel('الطالب الذي قرأ عليّ').selectOption('علي');
+      await rp.getByLabel('القسم الذي قرأه').selectOption('2');
+      await rp.getByRole('button',{name:'تأكيد مراجعة زميلي'}).click();
+      await page.getByRole('button',{name:'إلغاء',exact:true}).click();
+      assert.equal(await rp.locator('.review-blue').count(),0);
+      await rp.getByRole('button',{name:'تأكيد مراجعة زميلي'}).click();
+      await page.getByRole('button',{name:'لا، غير مكتمل',exact:true}).click();
+      await rp.locator('.review-blue').waitFor();
+      assert.equal(await rp.getByLabel('الطالب الذي قرأ عليّ').locator('option').count(),1);
+      await rp.getByLabel('القسم الذي قرأه').selectOption('1');
+      await rp.getByRole('button',{name:'تأكيد مراجعة زميلي'}).click();
+      await rp.locator('.review-orange').waitFor();
+      await page.getByRole('button',{name:'التسميع',exact:true}).click();
+      assert.equal(await rp.isVisible(),false);
+      assert.equal(await page.locator('#submissionForm').isVisible(),true);
+    }
     assert.deepEqual(errors,[]);
     console.log('✓ Mobile student UI: independent lists, atomic confirmation, conflicts, recitation navigation, logout');
   } finally { await browser?.close(); server.close(); }
