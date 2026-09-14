@@ -56,7 +56,7 @@ const production = process.env.TEST_PRODUCTION === '1';
     assert.equal(await panel.locator('.unavailable').count(),3);
     assert.equal(await panel.getByRole('button',{name:'تأكيد الطالب والآية'}).isDisabled(),true);
     // Recitation green does not grant permission in Jam.
-    const professor = await page.context().newPage();
+    let professor = await page.context().newPage();
     await professor.clock.install({time:new Date('2026-09-11T10:00:00Z')});
     professor.on('pageerror',error => errors.push(error.message));
     await professor.goto(`http://127.0.0.1:${server.address().port}/${production ? "index.html" : "prof-login-dev.html"}?group=group1&devMode=data`);
@@ -149,6 +149,26 @@ const production = process.env.TEST_PRODUCTION === '1';
       await rp.getByLabel('القسم الذي قرأه').selectOption('1');
       await rp.getByRole('button',{name:'تأكيد مراجعة زميلي'}).click();
       await rp.locator('.review-orange').waitFor();
+      professor = await page.context().newPage();
+      professor.on('pageerror',error=>errors.push(error.message));
+      await professor.clock.install({time:new Date('2026-09-12T05:00:00Z')});
+      await professor.goto(`http://127.0.0.1:${server.address().port}/prof-login-dev.html?group=group1&devMode=data`);
+      await professor.getByRole('button',{name:'المراجعة',exact:true}).click();
+      const grid=professor.locator('.review-professor-table');
+      await grid.locator('.review-yellow').waitFor();
+      assert.equal(await grid.locator('.review-orange').count(),1);
+      assert.equal(await grid.locator('.review-blue').count(),0);
+      assert.equal(await grid.locator('tbody tr').count(),3);
+      assert.equal((await grid.textContent()).includes('NaN'),false);
+      for(const width of [1440,390]){
+        await professor.setViewportSize({width,height:1000});
+        assert.equal(await grid.isVisible(),true);
+        await professor.screenshot({path:`/tmp/review-professor-${width}.png`,fullPage:true});
+      }
+      await professor.getByRole('button',{name:'التسميع',exact:true}).click();
+      assert.equal(await grid.isVisible(),false);
+      assert.equal(await professor.locator('#trackingTable').isVisible(),true);
+
       await page.getByRole('button',{name:'التسميع',exact:true}).click();
       assert.equal(await rp.isVisible(),false);
       assert.equal(await page.locator('#submissionForm').isVisible(),true);
