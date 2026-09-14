@@ -1,5 +1,7 @@
 /* Separate storage keeps واجب الجمع independent from weekly recitation. */
 window.Jam = (() => {
+  let applyStudentVisibility;
+  const enabled = () => context && (context.role !== "student" || context.enabled !== false);
   let context, key = "", data = {}, selected = "", busy = false, generation = 0;
   let panel, heading, weekNotice, list, verses, form, studentSelect, verseSelect, result, report;
   const el = (tag, text, className) => {
@@ -16,6 +18,7 @@ window.Jam = (() => {
   function mount(ctx) {
     context = ctx;
     if (!panel) build();
+    applyStudentVisibility?.();
     const nextKey = ctx.storageId;
     if (key !== nextKey) {
       key = nextKey; data = {}; selected = ""; generation++;
@@ -64,6 +67,7 @@ window.Jam = (() => {
       recitation.type = jam.type = "button";
       const original = [...context.host.children].filter(node => !node.matches(".account-box, .eyebrow"));
       function activate(showJam) {
+        showJam = showJam && enabled();
         original.forEach(node => { node.hidden = showJam; });
         panel.hidden = !showJam;
         jam.setAttribute("aria-pressed", String(showJam));
@@ -72,6 +76,10 @@ window.Jam = (() => {
       }
       recitation.addEventListener("click", () => activate(false)); jam.addEventListener("click", () => activate(true));
       nav.append(recitation, jam); context.host.querySelector(".account-box").after(nav);
+      applyStudentVisibility = () => {
+        jam.hidden = !enabled();
+        if (!enabled()) activate(false);
+      };
       activate(false);
     }
     if (context.role === "professor") {
@@ -117,7 +125,7 @@ window.Jam = (() => {
     return response.json();
   }
   async function refresh() {
-    if (busy || !context || context.ready === false) return;
+    if (busy || !enabled() || context.ready === false) return;
     const epoch = generation, ctx = context;
     try {
       const snapshot = await read(ctx);
@@ -129,7 +137,7 @@ window.Jam = (() => {
     } catch (error) { if (epoch === generation) result.textContent = error.message; }
   }
   async function mutate(change, newSelection) {
-    if (busy || context?.ready === false) return false;
+    if (busy || !enabled() || context?.ready === false) return false;
     busy = true; draw();
     const epoch = generation, ctx = context;
     result.textContent = "جار الحفظ...";

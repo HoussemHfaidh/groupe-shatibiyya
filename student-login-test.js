@@ -438,6 +438,7 @@ async function loadConfig() {
     currentConfig = config;
     window.Jam?.mount({
       role: "student",
+      enabled: currentGroupId === "group1",
       schedule: window.SHATIBIYYA_JAM_SCHEDULES?.[currentGroupId],
       name: currentUserProfile?.studentName,
       students: config.students,

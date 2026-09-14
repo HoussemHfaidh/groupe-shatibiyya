@@ -26,6 +26,7 @@ const production = process.env.TEST_PRODUCTION === '1';
     const students = ['أحمد', 'علي', 'عمر'];
     let assignment = model.create(students, 'واجب الجمع الأول', 'البقرة — 1\nالبقرة — 2\nالبقرة — 3', 'one');
     assignment = { ...assignment, ...model.weeklyWindow({number:45,startDate:'2026-09-05',timeZone:'Europe/Paris'},new Date('2026-09-11T10:00:00Z')) };
+    let profileGroup = "group1";
     let jam = { [assignment.id]: assignment }, revision = 1, writes = 0, conflict = false;
     await page.addInitScript(production => localStorage.setItem(production ? 'shatibiyya-production-session' : 'shatibiyya-login-test-session', JSON.stringify({email:'student@example.test',emailOnly:true,expiresAt:Date.now()+1000000})), production);
     await page.context().route('https://**/*', async route => {
@@ -33,7 +34,7 @@ const production = process.env.TEST_PRODUCTION === '1';
       let value;
       const headers = { 'access-control-allow-origin':'*', 'access-control-allow-headers':'*', 'access-control-allow-methods':'GET,PUT,OPTIONS', 'access-control-expose-headers':'ETag', 'ETag':`"${revision}"` };
       if (request.method() === 'OPTIONS') return route.fulfill({status:204,headers});
-      if (url.pathname.includes('loginEmails')) value = { role:'student',studentName:'أحمد',groupId:'group1' };
+      if (url.pathname.includes('loginEmails')) value = { role:'student',studentName:'أحمد',groupId:profileGroup };
       else if ((url.pathname.startsWith('/config/') || url.pathname === '/config.json')) value = {students,weeks:[{id:'week1',start:1,end:10,date:'2026-09-11'}],statuses:{'احمد__week1':'done'}};
       else if ((url.pathname.startsWith('/submissions/') || url.pathname === '/submissions.json')) value = {};
       else if (url.pathname === (production ? '/jam/groups/group1.json' : '/jam/groups/login-test-group1.json')) {
@@ -120,6 +121,18 @@ const production = process.env.TEST_PRODUCTION === '1';
     assert.equal(await panel.isVisible(),false);
     await page.getByRole('button',{name:'خروج',exact:true}).click();
     assert.equal(await page.locator('#loginPanel').isVisible(),true);
+    profileGroup = "group2";
+    await page.locator('#loginEmail').fill('student@example.test');
+    await page.locator('#loginForm button[type="submit"]').click();
+    await page.locator('#accountName').filter({hasText:'المجموعة 2'}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'واجب الجمع',exact:true}).count(),0);
+    assert.equal(await page.locator('.jam-panel').isVisible(),false);
+    assert.equal(await page.locator('#submissionForm').isVisible(),true);
+    await page.getByRole('button',{name:'خروج',exact:true}).click();
+    profileGroup = "group1";
+    await page.locator('#loginEmail').fill('student@example.test');
+    await page.locator('#loginForm button[type="submit"]').click();
+    await page.getByRole('button',{name:'واجب الجمع',exact:true}).waitFor();
     assert.deepEqual(errors,[]);
     console.log('✓ Mobile student UI: independent lists, atomic confirmation, conflicts, recitation navigation, logout');
   } finally { await browser?.close(); server.close(); }
