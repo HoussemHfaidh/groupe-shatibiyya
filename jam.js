@@ -183,7 +183,7 @@ window.Jam = (() => {
     });
     assignment?.verses.forEach((verse, index) => {
       const used = confirmations.find(c => c.verseIndex === index);
-      verses.append(el("div", `${verse} — ${used ? `مستعملة · ${used.student}` : "متاحة"}`, `validator-option ${used ? "unavailable" : "available"}`));
+      verses.append(el("div", `${verse} — ${used ? `تم جمعها · ${used.student}` : "متاحة"}`, `validator-option ${used ? "unavailable" : "available"}`));
       if (!used) verseSelect.add(new Option(verse, String(index)));
     });
     if ([...studentSelect.options].some(o => o.value === oldStudent)) studentSelect.value = oldStudent;
