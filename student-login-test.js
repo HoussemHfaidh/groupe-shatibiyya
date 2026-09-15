@@ -641,7 +641,9 @@ async function submitResponse(event) {
 
   const recapWeek = currentConfig?.weeks?.find(w => w.id === weekId);
   const recapDate = recapWeek?.date ? new Date(`${recapWeek.date}T12:00:00`).toLocaleDateString('ar-TN') : '';
-  if (!window.confirm(`هل تؤكد التسميع؟\nالطالب: ${student}\nقرأ على: ${validator}\nمن ${recapWeek?.start ?? '—'} إلى ${recapWeek?.end ?? '—'} - ${recapDate}`)) return;
+  const confirmationAccount = currentAuthSession;
+  if (!await window.Review.popup('تأكيد التسميع', `هل تؤكد التسميع؟\nالطالب: ${student}\nقرأ على: ${validator}\nمن ${recapWeek?.start ?? '—'} إلى ${recapWeek?.end ?? '—'} - ${recapDate}`, [['نعم، أؤكد التسميع', true], ['إلغاء', null]])) return;
+  if (currentAuthSession !== confirmationAccount) return;
 
   const payload = {
     student,

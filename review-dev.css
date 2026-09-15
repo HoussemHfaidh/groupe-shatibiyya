@@ -11,3 +11,5 @@
 .review-professor-table caption{font-weight:700;padding:.7rem}.review-legend{line-height:1.8}
 
 .review-cell-button{background:transparent!important;color:inherit!important;border:0;width:100%;padding:.3rem;cursor:pointer;font:inherit}.review-cell-button:focus-visible{outline:3px solid #2563eb}
+
+.review-dialog p{white-space:pre-line;line-height:1.8}.review-dialog button{min-height:44px;margin:6px;padding:10px 16px}

@@ -20,7 +20,7 @@
  function confirm(w,actor,target,part,finished,now=new Date()){
   if(!active(w,now))throw Error('انتهى وقت المراجعة لهذا الأسبوع.');
   if(actor===target||!w.students.includes(actor)||!w.students.includes(target))throw Error('اختر زميلا من مجموعتك.');
-  if(![1,2].includes(part)||typeof finished!=='boolean'||(part===1&&!finished))throw Error('حدد نتيجة المراجعة.');
+  if(![1,2].includes(part)||typeof finished!=='boolean')throw Error('حدد نتيجة المراجعة.');
   const next=structuredClone(w);
   if(recordFor(w,target))throw Error('تم تأكيد هذا الطالب بالفعل.');
   if(w.assigned?.[target] && w.assigned[target]!==part)throw Error('يجب عكس القسم الذي قرأه الطالب الأسبوع الماضي.');
