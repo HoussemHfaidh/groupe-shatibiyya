@@ -148,6 +148,7 @@ const production = process.env.TEST_PRODUCTION === '1';
       assert.equal(await rp.getByLabel('الطالب الذي قرأ عليّ').locator('option').count(),1);
       await rp.getByLabel('القسم الذي قرأه').selectOption('1');
       await rp.getByRole('button',{name:'تأكيد مراجعة زميلي'}).click();
+      await page.getByRole('button',{name:'نعم، أؤكد',exact:true}).click();
       await rp.locator('.review-orange').waitFor();
       professor = await page.context().newPage();
       professor.on('pageerror',error=>errors.push(error.message));
@@ -158,6 +159,14 @@ const production = process.env.TEST_PRODUCTION === '1';
       await grid.locator('.review-yellow').waitFor();
       assert.equal(await grid.locator('.review-orange').count(),1);
       assert.equal(await grid.locator('.review-blue').count(),0);
+      professor.once('dialog',d=>d.accept('2'));
+      await grid.locator('.review-yellow button').click();
+      await grid.locator('.review-green').waitFor();
+      assert.equal(await grid.locator('.review-yellow').count(),0);
+      professor.once('dialog',d=>d.dismiss());
+      await grid.locator('.review-green button').click();
+      assert.equal(await grid.locator('.review-green').count(),1);
+
       assert.equal(await grid.locator('tbody tr').count(),3);
       assert.equal((await grid.textContent()).includes('NaN'),false);
       for(const width of [1440,390]){

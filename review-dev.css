@@ -9,3 +9,5 @@
 .review-professor-table .review-yellow{background:#ffff00;color:#111}
 .review-professor-table .review-red{background:#ffc7ce;color:#9c0006}
 .review-professor-table caption{font-weight:700;padding:.7rem}.review-legend{line-height:1.8}
+
+.review-cell-button{background:transparent!important;color:inherit!important;border:0;width:100%;padding:.3rem;cursor:pointer;font:inherit}.review-cell-button:focus-visible{outline:3px solid #2563eb}
