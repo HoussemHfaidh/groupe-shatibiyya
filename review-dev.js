@@ -106,7 +106,10 @@ window.Review=(()=>{
    const toggle=el('button',studentView?'عرض الجدول':'عرض حسب الطالب','secondary');toggle.type='button';toggle.onclick=()=>{studentView=!studentView;draw();};list.append(toggle);
    if(studentView){
     const selector=el('select');selector.setAttribute('aria-label','تفاصيل الطالب');
-    const names=[...new Set([...ctx.students,...Object.values(data).flatMap(x=>x.students||[])])];names.forEach(n=>selector.add(new Option(n,n)));if(names.includes(selectedDetail))selector.value=selectedDetail;selectedDetail=selector.value;selector.onchange=()=>{selectedDetail=selector.value;draw();};list.append(selector);
+    const names=[...new Set([...ctx.students,...Object.values(data).flatMap(x=>x.students||[])])];const recordsFor=n=>Object.values(data).flatMap(w=>(w.records||[]).filter(r=>r.student===n));
+    names.forEach(n=>selector.add(new Option(`${n} · ${recordsFor(n).length} مراجعات`,n)));
+    if(!names.includes(selectedDetail))selectedDetail=names.find(n=>recordsFor(n).some(r=>r.durationMinutes!=null))||names.find(n=>recordsFor(n).length)||names[0]||'';
+    selector.value=selectedDetail;selectedDetail=selector.value;selector.onchange=()=>{selectedDetail=selector.value;draw();};list.append(selector);
     const table=el('table','','review-table review-details'),head=el('tr');['الأسبوع','القسم','المدة بالدقائق','عدد الأخطاء','النتيجة'].forEach(t=>head.append(el('th',t)));table.append(head);
     let count=0;for(const week of Object.values(data).sort((a,b)=>b.id.localeCompare(a.id))){const r=ReviewModel.recordFor(week,selectedDetail);if(!r)continue;count++;const row=el('tr');[week.startDate,r.part===1?'الأول':'الثاني',r.durationMinutes??'غير مسجل',r.errorCount??'غير مسجل',r.complete?'مكتمل':'غير مكتمل'].forEach(t=>row.append(el('td',String(t))));table.append(row);}list.append(table);if(!count)list.append(el('p','لا توجد مراجعات مسجلة لهذا الطالب.'));
    }else professorTable(w);
