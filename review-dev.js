@@ -1,6 +1,6 @@
 /* DEV-only revision; never imported by production entry points. */
 window.Review=(()=>{
- let ctx,key='',data={},epoch=0,busy=false,panel,navButton,heading,list,form,partner,part,result,dialog;
+ let ctx,key='',data={},epoch=0,busy=false,panel,navButton,heading,list,form,partner,part,result,dialog,duration,errors,studentView=false,selectedDetail="";
  const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text)n.textContent=text;if(cls)n.className=cls;return n;};
  const field=(label,input)=>{const n=el('label','','field');n.append(el('span',label),input);return n;};
  function mount(next){ctx=next;if(!panel)build();if(key!==ctx.storageId){key=ctx.storageId;data={};epoch++;draw();}refresh();}
@@ -10,11 +10,13 @@ window.Review=(()=>{
   heading=el('h3');list=el('div','','review-list');result=el('div','','result-box');result.setAttribute('aria-live','polite');
   const reload=el('button','تحديث المراجعة','secondary');reload.type='button';reload.onclick=refresh;
   form=el('form','','student-form');partner=el('select');partner.required=true;part=el('select');part.add(new Option('القسم الأول','1'));part.add(new Option('القسم الثاني','2'));partner.onchange=drawPart;
+  duration=el('input');duration.type='number';duration.min='0.01';duration.step='0.01';duration.required=true;
+  errors=el('input');errors.type='number';errors.min='0';errors.step='1';errors.required=true;
   const submit=el('button','تأكيد مراجعة زميلي','primary');submit.type='submit';
-  form.append(field('الطالب الذي قرأ عليّ',partner),field('القسم الذي قرأه',part),submit);
-  form.onsubmit=async event=>{event.preventDefault();if(busy)return;const target=partner.value,section=Number(part.value),actor=ctx.name,id=ReviewModel.week(ctx.day).id,token=epoch;
+  form.append(field('الطالب الذي قرأ عليّ',partner),field('القسم الذي قرأه',part),field('المدة بالدقائق',duration),field('عدد الأخطاء',errors),submit);
+  form.onsubmit=async event=>{event.preventDefault();if(busy||!form.reportValidity())return;const measurement=ReviewModel.metrics({durationMinutes:Number(duration.value),errorCount:Number(errors.value)});const target=partner.value,section=Number(part.value),actor=ctx.name,id=ReviewModel.week(ctx.day).id,token=epoch;
    const finished=await ask(section,target,actor);if(finished===null||token!==epoch)return;
-   mutate(store=>({...store,[id]:ReviewModel.confirm(store[id],actor,target,section,finished)}));
+   mutate(store=>({...store,[id]:ReviewModel.confirm(store[id],actor,target,section,finished,new Date(),measurement)}));
   };
   dialog=el('dialog','','review-dialog');dialog.append(el('h3','تأكيد القسم الثاني'),el('p','هل قرأ زميلك من نصف الشاطبية إلى النهاية كاملة؟'));
   panel.append(heading,reload,list,form,result);document.body.append(dialog);
@@ -30,12 +32,16 @@ window.Review=(()=>{
   };
   navigation.append(navButton);ctx.host.append(panel);
  }
- function popup(title,message,choices){return new Promise(resolve=>{
+ function popup(title,message,choices,measurements){return new Promise(resolve=>{
   if(dialog.open){resolve(null);return;}
+  dialog.remove();dialog=el('dialog','','review-dialog');dialog.append(el('h3'),el('p'));document.body.append(dialog);
   dialog.querySelector('h3').textContent=title;dialog.querySelector('p').textContent=message;
+  dialog.querySelectorAll('.review-measurements').forEach(n=>n.remove());
+  let metricForm;
+  if(measurements){metricForm=el('form','','review-measurements');for(const [label,key,min,step] of [['المدة بالدقائق','durationMinutes','0.01','0.01'],['عدد الأخطاء','errorCount','0','1']]){const input=el('input');input.type='number';input.name=key;input.min=min;input.step=step;input.required=true;input.value=measurements[key]??'';metricForm.append(field(label,input));}dialog.append(metricForm);}
   dialog.querySelectorAll('button').forEach(n=>n.remove());let resolved=false;
   const done=value=>{if(resolved)return;resolved=true;dialog.close();resolve(value);};
-  for(const [label,value] of choices){const b=el('button',label,'secondary');b.type='button';b.onclick=()=>done(value);dialog.append(b);}
+  for(const [label,value] of choices){const b=el('button',label,'secondary');b.type='button';b.onclick=()=>{if(value!==null&&metricForm){if(!metricForm.reportValidity())return;done(ReviewModel.metrics({durationMinutes:Number(metricForm.elements.durationMinutes.value),errorCount:Number(metricForm.elements.errorCount.value)}));}else done(value);};dialog.append(b);}
   dialog.oncancel=event=>{event.preventDefault();done(null);};dialog.onclose=()=>{if(!resolved){resolved=true;resolve(null);}};dialog.showModal();
  });}
  function ask(section,target,actor){return popup(section===1?'تأكيد القسم الأول':'تأكيد القسم الثاني',`${target} ← قرأ على ${actor}. `+(section===1?'هل قرأ القسم الأول كاملا من البداية إلى النصف؟':'هل قرأ من نصف الشاطبية إلى النهاية كاملة؟'),[['نعم، إلى النهاية',true],['لا، غير مكتمل',false],['إلغاء',null]]);}
@@ -49,10 +55,12 @@ window.Review=(()=>{
   const token=epoch;
   const value=await popup('تعديل المراجعة',`${name} · ${id}`,[['القسم الأول — برتقالي',1],['القسم الثاني مكتمل — أخضر',2],['القسم الأول غير مكتمل — أصفر',5],['القسم الثاني غير مكتمل — أصفر',3],['غياب — أحمر',4],['مسح النتيجة',0],['إلغاء',null]]);
   if(value===null||token!==epoch)return;
+  let measurement;
+  if([1,2,3,5].includes(value)){measurement=await popup('تفاصيل المراجعة',name,[['حفظ',true],['إلغاء',null]],ReviewModel.recordFor(data[id],name)||{});if(!measurement||token!==epoch)return;}
   mutate(store=>{const next=structuredClone(store),week=next[id];if(!week?.students?.includes(name))throw Error('الطالب غير موجود في هذا الأسبوع.');
    week.records=(week.records||[]).filter(r=>r.student!==name);week.missed=(week.missed||[]).filter(n=>n!==name);
    if(value===4)week.missed.push(name);
-   else if(value)week.records.push({student:name,part:[1,5].includes(value)?1:2,complete:![3,5].includes(value),participated:true,validator:'professor',createdAt:new Date().toISOString()});
+   else if(value)week.records.push({...measurement,student:name,part:[1,5].includes(value)?1:2,complete:![3,5].includes(value),participated:true,validator:'professor',createdAt:new Date().toISOString()});
    return next;
   });
  }
@@ -94,7 +102,15 @@ window.Review=(()=>{
     row.append(el('td',record?record.complete?`X · القسم ${record.part===1?'الأول':'الثاني'}`:`X · القسم ${record.part===1?'الأول':'الثاني'} غير مكتمل`:ended?'لم يشارك':'—',record?record.complete?record.part===1?'review-orange':'review-green':'review-blue':ended?'review-red':''));table.append(row);}
    return table;
   }
-  if(ctx.role==='professor')professorTable(w);else list.append(tableFor(w));
+  if(ctx.role==='professor'){
+   const toggle=el('button',studentView?'عرض الجدول':'عرض حسب الطالب','secondary');toggle.type='button';toggle.onclick=()=>{studentView=!studentView;draw();};list.append(toggle);
+   if(studentView){
+    const selector=el('select');selector.setAttribute('aria-label','تفاصيل الطالب');
+    const names=[...new Set([...ctx.students,...Object.values(data).flatMap(x=>x.students||[])])];names.forEach(n=>selector.add(new Option(n,n)));if(names.includes(selectedDetail))selector.value=selectedDetail;selectedDetail=selector.value;selector.onchange=()=>{selectedDetail=selector.value;draw();};list.append(selector);
+    const table=el('table','','review-table review-details'),head=el('tr');['الأسبوع','القسم','المدة بالدقائق','عدد الأخطاء','النتيجة'].forEach(t=>head.append(el('th',t)));table.append(head);
+    let count=0;for(const week of Object.values(data).sort((a,b)=>b.id.localeCompare(a.id))){const r=ReviewModel.recordFor(week,selectedDetail);if(!r)continue;count++;const row=el('tr');[week.startDate,r.part===1?'الأول':'الثاني',r.durationMinutes??'غير مسجل',r.errorCount??'غير مسجل',r.complete?'مكتمل':'غير مكتمل'].forEach(t=>row.append(el('td',String(t))));table.append(row);}list.append(table);if(!count)list.append(el('p','لا توجد مراجعات مسجلة لهذا الطالب.'));
+   }else professorTable(w);
+  }else list.append(tableFor(w));
   const selected=partner.value;partner.replaceChildren();
   const choices=w.students.filter(n=>n!==ctx.name&&!ReviewModel.recordFor(w,n));
   choices.forEach(n=>partner.add(new Option(n,n)));if(choices.includes(selected))partner.value=selected;

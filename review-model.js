@@ -17,16 +17,21 @@
   return {...store,[w.id]:{...w,students:[...students],assigned,records:[]}};
  }
  function recordFor(w,name){return (w?.records||[]).find(r=>r.student===name);}
- function confirm(w,actor,target,part,finished,now=new Date()){
+ function metrics(value){
+  if(!value||typeof value.durationMinutes!=='number'||!Number.isFinite(value.durationMinutes)||value.durationMinutes<=0||!Number.isInteger(value.errorCount)||value.errorCount<0)throw Error('أدخل مدة موجبة وعدد أخطاء صحيحا (صفر أو أكثر).');
+  return {durationMinutes:value.durationMinutes,errorCount:value.errorCount};
+ }
+ function confirm(w,actor,target,part,finished,now=new Date(),measurement){
   if(!active(w,now))throw Error('انتهى وقت المراجعة لهذا الأسبوع.');
   if(actor===target||!w.students.includes(actor)||!w.students.includes(target))throw Error('اختر زميلا من مجموعتك.');
   if(![1,2].includes(part)||typeof finished!=='boolean')throw Error('حدد نتيجة المراجعة.');
+  const measured=metrics(measurement);
   const next=structuredClone(w);
   if(recordFor(w,target))throw Error('تم تأكيد هذا الطالب بالفعل.');
   if(w.assigned?.[target] && w.assigned[target]!==part)throw Error('يجب عكس القسم الذي قرأه الطالب الأسبوع الماضي.');
   next.records ||= [];
-  next.records.push({student:target,part,complete:finished,participated:true,validator:actor,createdAt:now.toISOString()});
+  next.records.push({...measured,student:target,part,complete:finished,participated:true,validator:actor,createdAt:now.toISOString()});
   return next;
  }
- const api={week,active,ensure,recordFor,confirm};if(typeof module!=='undefined')module.exports=api;else root.ReviewModel=api;
+ const api={week,active,ensure,recordFor,metrics,confirm};if(typeof module!=='undefined')module.exports=api;else root.ReviewModel=api;
 })(globalThis);
