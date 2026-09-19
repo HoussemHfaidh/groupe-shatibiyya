@@ -199,7 +199,7 @@ window.Jam = (() => {
     report.replaceChildren();
     const assignments = Object.values({ ...data, ...(currentAssignment ? { [currentAssignment.id]: currentAssignment } : {}) })
       .filter(item => item.startDate && item.startDate <= (currentAssignment?.startDate || "9999"))
-      .sort((a, b) => b.startDate.localeCompare(a.startDate));
+      .sort((a, b) => a.startDate.localeCompare(b.startDate));
     const table = el("table", "", "tracking-table jam-tracking-table");
     table.append(el("caption", "متابعة واجب الجمع"));
     const head = el("thead"), row = el("tr");
