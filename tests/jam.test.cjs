@@ -48,3 +48,18 @@ console.log('✓ Weekly Jam: 45→46 at Paris 06:00, no catch-up, clean new week
 const emptyWeek = {...next, 'week-2026-09-12': {...next['week-2026-09-12'], verses: []}};
 assert.equal(ensureWeek(emptyWeek,names,schedule,boundary)['week-2026-09-12'].verses.length,names.length);
 assert.equal(ensureWeek(next,names,schedule,boundary),next);
+
+// Correct an existing approval without breaking the validation chain or its date.
+const { correctVerse } = require('../jam-model.js');
+const corrected = correctVerse(second, 'أحمد', 3, {role:'professor'}, 0);
+assert.equal(corrected.confirmations[0].verseIndex, 3);
+assert.equal(corrected.confirmations[0].createdAt, second.confirmations[0].createdAt);
+assert.deepEqual(corrected.confirmations[1], second.confirmations[1]);
+assert.equal(second.confirmations[0].verseIndex, 0);
+assert.throws(() => correctVerse(second, 'أحمد', 1, {role:'professor'}, 0));
+assert.throws(() => correctVerse(second, 'أحمد', 3, {role:'student'}, 0));
+assert.throws(() => correctVerse(second, 'عمر', 3, {role:'professor'}, 0));
+assert.throws(() => correctVerse(second, 'أحمد', -1, {role:'professor'}, 0));
+assert.throws(() => correctVerse(corrected, 'أحمد', 2, {role:'professor'}, 0));
+assert.equal(confirm(corrected, 'عمر', 0, {role:'student',name:'أحمد'}).confirmations.length, 3);
+console.log('✓ Professor correction: free verse, preserved chain, stale edits rejected');

@@ -68,6 +68,18 @@ const production = process.env.TEST_PRODUCTION === '1';
     await profPanel.getByRole('button',{name:'تأكيد الطالب والآية'}).click();
     await profPanel.locator('.jam-done').waitFor();
     assert.equal(await profPanel.locator('.jam-missed').count(),2);
+    // Professor can correct an approval and free its previous verse.
+    await profPanel.locator('.jam-done summary').click();
+    await profPanel.getByLabel('الآية الصحيحة — أحمد — 45', {exact:true}).selectOption('2');
+    await profPanel.getByRole('button', {name:'حفظ التصحيح'}).click();
+    await profPanel.getByText('تم الحفظ.', {exact:true}).waitFor();
+    assert.equal(jam[assignment.id].confirmations[0].verseIndex, 2);
+    await profPanel.locator('.jam-done summary').click();
+    await profPanel.getByLabel('الآية الصحيحة — أحمد — 45', {exact:true}).selectOption('0');
+    await profPanel.getByRole('button', {name:'حفظ التصحيح'}).click();
+    await profPanel.getByText('تم الحفظ.', {exact:true}).waitFor();
+    assert.equal(jam[assignment.id].confirmations[0].verseIndex, 0);
+
     await professor.screenshot({path:'/tmp/jam-professor.png',fullPage:true});
     assert.equal(await professor.locator('#groupSelect').isVisible(),true);
     assert.equal(await professor.locator('#trackingTable').isVisible(),false);
@@ -99,12 +111,12 @@ const production = process.env.TEST_PRODUCTION === '1';
     await panel.getByLabel('الآية التي سمّعها').selectOption('1');
     await panel.getByRole('button',{name:'تأكيد الطالب والآية'}).click();
     await panel.getByText('علي — معتمد · أحمد',{exact:true}).waitFor();
-    assert.equal(writes,2); assert.equal(jam[assignment.id].confirmations.length,2);
+    assert.equal(writes,4); assert.equal(jam[assignment.id].confirmations.length,2);
     assert.equal(await panel.getByRole('button',{name:'تأكيد الطالب والآية'}).isEnabled(),true);
     conflict = true;
     await panel.getByRole('button',{name:'تأكيد الطالب والآية'}).click();
     await panel.getByText('تغيرت القائمة عند مستخدم آخر. حدّث القائمة ثم أعد المحاولة.').waitFor();
-    assert.equal(writes,2);
+    assert.equal(writes,4);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
     assert.equal(await panel.getByRole('heading',{name:'واجب الجمع 45',exact:true}).count(),1);
     assert.equal(await panel.locator('select').count(),2); // No assignment/history selector.
@@ -135,7 +147,7 @@ const production = process.env.TEST_PRODUCTION === '1';
     await page.locator('#loginEmail').fill('student@example.test');
     await page.locator('#loginForm button[type="submit"]').click();
     await page.getByRole('button',{name:'واجب الجمع',exact:true}).waitFor();
-    if(!production){
+    if(true){
       await page.getByRole('button',{name:'المراجعة',exact:true}).click();
       const rp=page.locator('.review-panel');
       await rp.getByLabel('الطالب الذي قرأ عليّ').selectOption('علي');

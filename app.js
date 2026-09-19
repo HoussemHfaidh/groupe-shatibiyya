@@ -909,6 +909,10 @@ function render(selectedWeekId) {
       firebaseUrl: () => getFirebaseUrl() ? firebasePath(`jam/groups/${storageId}`) : "",
     });
   }
+  window.Review?.mount({role: "professor", students: state.students,
+    storageId: currentGroupId, ready: jamConfigReady, day: state.settings.weekBoundaryDay,
+    host: document.querySelector("main.layout"), local: false,
+    firebaseUrl: ((id) => () => getFirebaseUrl() ? firebasePath(`review/groups/${id}`) : "")(currentGroupId)});
   sortWeeks();
   renderWeekSelect(selectedWeekId);
   renderSettings();

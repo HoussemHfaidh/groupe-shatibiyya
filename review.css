@@ -1,0 +1,15 @@
+.review-panel{direction:rtl;grid-column:1/-1;min-width:0}.review-list{overflow-x:auto;margin:1rem 0}.review-table{width:100%;border-collapse:collapse}.review-table th,.review-table td{padding:.7rem;border:1px solid #cbd5e1;text-align:right}.review-green{background:#dcfce7;color:#14532d}.review-red{background:#fee2e2;color:#991b1b}.review-orange{background:#ffedd5;color:#9a3412}.review-blue{background:#dbeafe;color:#1e40af}.review-dialog{max-width:min(90vw,460px);border:0;border-radius:16px;padding:24px;direction:rtl}.review-dialog::backdrop{background:#0008}.review-dialog button{margin:6px}.review-panel[hidden]{display:none!important}
+
+.review-professor-table{min-width:680px;table-layout:auto;border:2px solid #334155;color:#111;background:white}
+.review-professor-table th,.review-professor-table td{border:1px solid #475569;text-align:center;white-space:nowrap;padding:.55rem .8rem}
+.review-professor-table tbody th{text-align:right;font-weight:500}
+.review-professor-table thead tr:last-child th,.review-professor-table tfoot{background:#b4c6e7;font-weight:700}
+.review-professor-table .review-orange{background:#ffc000;color:#111}
+.review-professor-table .review-green{background:#92d050;color:#111}
+.review-professor-table .review-yellow{background:#ffff00;color:#111}
+.review-professor-table .review-red{background:#ffc7ce;color:#9c0006}
+.review-professor-table caption{font-weight:700;padding:.7rem}.review-legend{line-height:1.8}
+
+.review-cell-button{background:transparent!important;color:inherit!important;border:0;width:100%;padding:.3rem;cursor:pointer;font:inherit}.review-cell-button:focus-visible{outline:3px solid #2563eb}
+
+.review-dialog p{white-space:pre-line;line-height:1.8}.review-dialog button{min-height:44px;margin:6px;padding:10px 16px}

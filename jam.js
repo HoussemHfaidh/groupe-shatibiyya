@@ -220,7 +220,27 @@ window.Jam = (() => {
         const confirmed = (a.confirmations || []).find(c => c.student === name);
         const included = a.students.includes(name);
         const cell = el("td", !included ? "—" : confirmed ? `تم · ${a.verses[confirmed.verseIndex]}` : "لم يتم", included ? confirmed ? "jam-done" : "jam-missed" : "");
-        if (confirmed) cell.title = `اعتمد: ${confirmed.validator}`;
+        if (confirmed) {
+          cell.title = `اعتمد: ${confirmed.validator}`;
+          const editor = el("details");
+          editor.append(el("summary", "تصحيح الآية"));
+          const choice = el("select");
+          choice.setAttribute("aria-label", `الآية الصحيحة — ${name} — ${a.number}`);
+          a.verses.forEach((verse, index) => {
+            if (!(a.confirmations || []).some(c => c.student !== name && c.verseIndex === index)) choice.add(new Option(verse, String(index)));
+          });
+          choice.value = String(confirmed.verseIndex);
+          const save = el("button", "حفظ التصحيح", "secondary");
+          save.type = "button";
+          choice.disabled = save.disabled = busy || context.ready === false;
+          save.addEventListener("click", () => {
+            const verseIndex = Number(choice.value);
+            const actor = { role: context.role, name: context.name };
+            mutate(store => ({ ...store, [a.id]: JamModel.correctVerse(store[a.id], name, verseIndex, actor, confirmed.verseIndex) }));
+          });
+          editor.append(choice, save);
+          cell.append(editor);
+        }
         row.append(cell);
       });
       body.append(row);

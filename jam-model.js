@@ -64,7 +64,17 @@
     }
     return { ...assignment, confirmations: [...confirmations, { student, verseIndex, validator: actor.role === "professor" ? "الأستاذ" : actor.name, createdAt: new Date().toISOString() }] };
   }
-  const api = { create, confirm, weeklyWindow, active, current, ensureWeek };
+  function correctVerse(assignment, student, verseIndex, actor, expectedVerseIndex) {
+    if (actor.role !== "professor") throw new Error("التصحيح متاح للأستاذ فقط.");
+    const confirmations = assignment?.confirmations || [];
+    const existing = confirmations.find(item => item.student === student);
+    if (!existing) throw new Error("لم يتم اعتماد هذا الطالب بعد.");
+    if (existing.verseIndex !== expectedVerseIndex) throw new Error("تغيرت الآية. حدّث القائمة ثم أعد المحاولة.");
+    if (!Number.isInteger(verseIndex) || !assignment.verses[verseIndex]) throw new Error("اختر آية من القائمة.");
+    if (confirmations.some(item => item.student !== student && item.verseIndex === verseIndex)) throw new Error("هذه الآية مستعملة. اختر آية متاحة.");
+    return { ...assignment, confirmations: confirmations.map(item => item === existing ? { ...item, verseIndex } : item) };
+  }
+  const api = { create, confirm, correctVerse, weeklyWindow, active, current, ensureWeek };
   if (typeof module !== "undefined") module.exports = api;
   else root.JamModel = api;
 })(globalThis);
