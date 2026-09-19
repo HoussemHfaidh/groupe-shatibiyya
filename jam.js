@@ -222,8 +222,18 @@ window.Jam = (() => {
         const cell = el("td", !included ? "—" : confirmed ? `تم · ${a.verses[confirmed.verseIndex]}` : "لم يتم", included ? confirmed ? "jam-done" : "jam-missed" : "");
         if (confirmed) {
           cell.title = `اعتمد: ${confirmed.validator}`;
-          const editor = el("details");
-          editor.append(el("summary", "تصحيح الآية"));
+          const trigger = el("button", cell.textContent, "review-cell-button");
+          trigger.type = "button";
+          trigger.setAttribute("aria-label", `تصحيح الآية — ${name} — ${a.number}`);
+          trigger.setAttribute("aria-expanded", "false");
+          trigger.disabled = busy || context.ready === false;
+          const editor = el("div");
+          editor.hidden = true;
+          trigger.addEventListener("click", () => {
+            editor.hidden = !editor.hidden;
+            trigger.setAttribute("aria-expanded", String(!editor.hidden));
+            if (!editor.hidden) choice.focus();
+          });
           const choice = el("select");
           choice.setAttribute("aria-label", `الآية الصحيحة — ${name} — ${a.number}`);
           a.verses.forEach((verse, index) => {
@@ -239,7 +249,7 @@ window.Jam = (() => {
             mutate(store => ({ ...store, [a.id]: JamModel.correctVerse(store[a.id], name, verseIndex, actor, confirmed.verseIndex) }));
           });
           editor.append(choice, save);
-          cell.append(editor);
+          cell.replaceChildren(trigger, editor);
         }
         row.append(cell);
       });

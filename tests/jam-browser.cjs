@@ -69,12 +69,16 @@ const production = process.env.TEST_PRODUCTION === '1';
     await profPanel.locator('.jam-done').waitFor();
     assert.equal(await profPanel.locator('.jam-missed').count(),2);
     // Professor can correct an approval and free its previous verse.
-    await profPanel.locator('.jam-done summary').click();
+    assert.equal((await profPanel.locator('.jam-tracking-table').innerText()).includes('تصحيح الآية'), false);
+    assert.equal(await profPanel.getByLabel('الآية الصحيحة — أحمد — 45', {exact:true}).isVisible(), false);
+    await profPanel.getByRole('button', {name:'تصحيح الآية — أحمد — 45', exact:true}).click();
     await profPanel.getByLabel('الآية الصحيحة — أحمد — 45', {exact:true}).selectOption('2');
     await profPanel.getByRole('button', {name:'حفظ التصحيح'}).click();
     await profPanel.getByText('تم الحفظ.', {exact:true}).waitFor();
     assert.equal(jam[assignment.id].confirmations[0].verseIndex, 2);
-    await profPanel.locator('.jam-done summary').click();
+    assert.equal((await profPanel.locator('.jam-tracking-table').innerText()).includes('تصحيح الآية'), false);
+    assert.equal(await profPanel.getByLabel('الآية الصحيحة — أحمد — 45', {exact:true}).isVisible(), false);
+    await profPanel.getByRole('button', {name:'تصحيح الآية — أحمد — 45', exact:true}).click();
     await profPanel.getByLabel('الآية الصحيحة — أحمد — 45', {exact:true}).selectOption('0');
     await profPanel.getByRole('button', {name:'حفظ التصحيح'}).click();
     await profPanel.getByText('تم الحفظ.', {exact:true}).waitFor();
