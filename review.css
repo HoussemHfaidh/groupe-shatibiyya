@@ -13,3 +13,9 @@
 .review-cell-button{background:transparent!important;color:inherit!important;border:0;width:100%;padding:.3rem;cursor:pointer;font:inherit}.review-cell-button:focus-visible{outline:3px solid #2563eb}
 
 .review-dialog p{white-space:pre-line;line-height:1.8}.review-dialog button{min-height:44px;margin:6px;padding:10px 16px}
+
+/* Keep professor history and student-detail tables compact. */
+.review-professor-table, .review-details { width: auto; min-width: 0; font-size: 13px; line-height: 1.4; }
+.review-professor-table th, .review-professor-table td, .review-details th, .review-details td { padding: .3rem .5rem; }
+.review-professor-table .review-cell-button { padding: .1rem; min-height: 28px; }
+.review-professor-table caption { padding: .4rem; }

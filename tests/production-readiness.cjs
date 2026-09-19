@@ -73,6 +73,28 @@ const production = process.env.TEST_PRODUCTION === '1';
     if(ext==='csv')assert.ok(content.toString().includes('أحمد'));else assert.equal(content.subarray(1,4).toString(),'PNG');
    }
    await prof.getByRole('button',{name:'المراجعة',exact:true}).click();await prof.locator('.review-professor-table .review-green').waitFor();
+   // Sharing uses the selected complete table, never sends a real message in tests.
+   for (const [tab, selector] of [['واجب الجمع','.jam-panel'],['المراجعة','.review-panel']]) {
+    await prof.getByRole('button',{name:tab,exact:true}).click();
+    const section=prof.locator(selector), share=section.getByRole('button',{name:'مشاركة',exact:true});
+    await prof.evaluate(()=>{
+     window.sharedImages=[];window.opened=[];window.open=(...args)=>window.opened.push(args);
+     Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});
+     Object.defineProperty(navigator,'share',{configurable:true,value:async payload=>{
+      const file=payload.files[0];const bytes=new Uint8Array(await file.arrayBuffer());
+      const bitmap=await createImageBitmap(file);window.sharedImages.push({title:payload.title,size:file.size,type:file.type,signature:Array.from(bytes.slice(0,8)),width:bitmap.width,height:bitmap.height});
+     }});
+    });
+    await share.click();await prof.waitForFunction(()=>window.sharedImages.length===1);
+    const shared=await prof.evaluate(()=>window.sharedImages[0]);
+    assert.ok(shared.title.includes(tab));assert.equal(shared.type,'image/png');assert.ok(shared.size>100);
+    assert.deepEqual(shared.signature,[137,80,78,71,13,10,26,10]);assert.ok(shared.width>390);assert.ok(shared.height>150);
+    await prof.evaluate(()=>Object.defineProperty(navigator,'share',{configurable:true,value:async()=>{throw new DOMException('Cancelled','AbortError');}}));
+    await share.click();await share.waitFor({state:'visible'});
+    await prof.evaluate(()=>Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>false}));
+    const downloadPromise=prof.waitForEvent('download');await share.click();const image=await downloadPromise;
+    assert.ok(image.suggestedFilename().endsWith('.png'));assert.equal(await prof.evaluate(()=>window.opened.length),1);
+   }
    assert.equal(stores[configPath].students.length,3);assert.deepEqual(errors,[]);
    await context.close();console.log(`✓ ${production?'PROD':'DEV'} ${group}: recitation cancel/submit, isolated review conflict/offline/retry, metrics, professor, CSV/PNG exports`);
   }

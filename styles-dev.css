@@ -49,3 +49,9 @@
 
 /* Late recitation is orange; Jam retains only red/green. */
 :root { --yellow: #f6a43a; }
+
+/* Compact professor homework table without stretching sparse columns. */
+.jam-tracking-table { width: auto; min-width: 0; font-size: 13px; line-height: 1.4; }
+.jam-tracking-table th, .jam-tracking-table td { padding: .3rem .5rem; }
+.jam-tracking-table caption { font-size: 1rem; padding: .4rem; }
+.jam-tracking-table .review-cell-button { padding: .1rem; min-height: 28px; }

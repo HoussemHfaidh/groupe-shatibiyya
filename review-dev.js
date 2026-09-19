@@ -19,7 +19,7 @@ window.Review=(()=>{
    mutate(store=>({...store,[id]:ReviewModel.confirm(store[id],actor,target,section,finished,new Date(),measurement)}));
   };
   dialog=el('dialog','','review-dialog');dialog.append(el('h3','تأكيد القسم الثاني'),el('p','هل قرأ زميلك من نصف الشاطبية إلى النهاية كاملة؟'));
-  panel.append(heading,reload,list,form,result);document.body.append(dialog);
+  panel.append(heading,reload);if(ctx.role==='professor')panel.append(window.TableShare.button(()=>list.querySelector('table'),'متابعة المراجعة'));panel.append(list,form,result);document.body.append(dialog);
   const navigation=ctx.role==='professor'?ctx.host.querySelector('.jam-professor-navigation .jam-navigation'):ctx.host.querySelector('.jam-navigation');
   navButton=el('button','المراجعة','secondary');navButton.type='button';navButton.setAttribute('aria-pressed','false');
   navigation.addEventListener('click',event=>{if(event.target!==navButton){panel.hidden=true;navButton.setAttribute('aria-pressed','false');}});

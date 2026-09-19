@@ -34,7 +34,6 @@ window.Jam = (() => {
     list = el("div", "", "validator-list"); verses = el("div", "", "validator-list");
     const columns = el("div", "", "jam-columns");
     report = el("div", "", "table-scroll");
-    if (context.role === "professor") panel.append(report);
     const studentsColumn = el("div"), versesColumn = el("div");
     studentsColumn.hidden = context.role === "professor";
     studentsColumn.append(el("h3", "الطلاب"), list); versesColumn.append(el("h3", "الآيات"), verses); columns.append(studentsColumn, versesColumn);
@@ -57,7 +56,9 @@ window.Jam = (() => {
     reload.type = "button";
     reload.addEventListener("click", refresh);
     panel.append(heading, weekNotice);
-    if (context.role === "professor") panel.append(report);
+    if (context.role === "professor") {
+      panel.append(window.TableShare.button(() => report.querySelector("table"), "متابعة واجب الجمع"), report);
+    }
     panel.append(reload, columns, form, result);
     if (window.SHATIBIYYA_JAM_LOCAL_DEV) panel.prepend(el("p", "بيانات واجب الجمع: DEV محلي", "eyebrow"));
     if (context.role === "student") {
