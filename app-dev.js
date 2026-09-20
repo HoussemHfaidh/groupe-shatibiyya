@@ -915,6 +915,7 @@ function render(selectedWeekId) {
     storageId: currentDevStorageId(), ready: jamConfigReady, day: state.settings.weekBoundaryDay,
     host: document.querySelector("main.layout"), local: window.SHATIBIYYA_JAM_LOCAL_DEV,
     firebaseUrl: ((id) => () => getFirebaseUrl() ? firebasePath(`khatma/groups/${id}`) : "")(currentDevStorageId())});
+  if(isProfessorDevMode()) window.Attendance?.mount({role: "professor", storageId: currentDevStorageId(), host: document.querySelector("main.layout")});
   sortWeeks();
   renderWeekSelect(selectedWeekId);
   renderSettings();

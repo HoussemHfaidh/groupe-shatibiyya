@@ -1,0 +1,29 @@
+.attendance-panel { grid-column: 1 / -1; min-width: 0; }
+.attendance-controls { display: flex; flex-wrap: wrap; gap: 1rem; margin-block: 1rem; }
+.attendance-controls .field { flex: 1 1 260px; min-width: 0; }
+.attendance-controls input, .attendance-controls select { width: 100%; min-width: 0; }
+.attendance-summary { background: #f1f6f3; padding: 1rem; border-radius: 12px; margin-block: 1rem; }
+.attendance-scroll { overflow-x: auto; }
+.attendance-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.attendance-table th, .attendance-table td { padding: .7rem; border: 1px solid #d9e1dc; text-align: center; white-space: nowrap; }
+.attendance-table thead { background: #edf3ef; }
+.attendance-teacher { background: #edf3ef; font-weight: bold; }
+.attendance-table .attendance-late { background: #fff09a; color: #584500; }
+.attendance-table .attendance-low { background: #ffe0e0; color: #842525; }
+.attendance-toggle { background: #fff; color: #55605a; border: 1px solid #c8d2cb; padding: .55rem; border-radius: 8px; font: inherit; }
+.attendance-excused[aria-pressed="true"] { background: #c8ead6; color: #164b2d; border-color: #347e50; }
+.attendance-unexcused[aria-pressed="true"] { background: #ffc5c5; color: #741d1d; border-color: #ba4e4e; }
+.attendance-removed[aria-pressed="true"] { background: #ddd0f0; color: #512e74; border-color: #78559e; }
+.attendance-toggle[aria-pressed="true"]::before { content: '✓ '; }
+.attendance-toggle:focus-visible { outline: 3px solid #175c44; outline-offset: 2px; }
+.attendance-note { color: #755500; }
+.attendance-actions { margin-block: 1rem; }
+.attendance-preview { padding: .5rem; border: 1px solid #d9e1dc; background: white; border-radius: 12px; }
+.attendance-preview img { display: block; width: 100%; height: auto; }
+.attendance-editor { margin-block: 1rem; }
+.attendance-editor > summary { cursor: pointer; padding: 1rem; font-weight: bold; color: #175c44; background: #edf3ef; border-radius: 8px; }
+.attendance-editor .attendance-scroll { margin-top: 1rem; }
+.attendance-dialog { max-width: 96vw; max-height: 94vh; padding: 1rem; border: 1px solid #cbd8d0; border-radius: 12px; overflow: auto; }
+.attendance-dialog::backdrop { background: #142a22aa; }
+.attendance-dialog button { position: sticky; top: 0; right: 0; display: block; }
+.attendance-dialog img { display: block; width: 1455px; max-width: none; height: auto; }

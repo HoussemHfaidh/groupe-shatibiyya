@@ -1,0 +1,10 @@
+Name (original name),Email,Join time,Leave time,Duration (minutes),Guest,Recording disclaimer response,In waiting room
+Gharbi,,09/20/2026 09:00:00,09/20/2026 10:40:00,100,No,No Response,No
+Test Present,,09/20/2026 09:00:00,09/20/2026 10:40:00,100,Yes,OK,No
+Test Retard 5 min,,09/20/2026 09:05:00,09/20/2026 10:40:00,95,Yes,OK,No
+Test Presence 60 pourcent,,09/20/2026 09:00:00,09/20/2026 10:00:00,60,Yes,OK,No
+Test Retard et Presence faible,,09/20/2026 09:20:00,09/20/2026 10:10:00,50,Yes,OK,No
+Test Reconnexion,,09/20/2026 09:00:00,09/20/2026 09:40:00,40,Yes,OK,No
+Test Reconnexion,,09/20/2026 09:50:00,09/20/2026 10:40:00,50,Yes,OK,No
+Test Exactement 70 pourcent,,09/20/2026 09:00:00,09/20/2026 10:10:00,70,Yes,OK,No
+Test Retard 4 min,,09/20/2026 09:04:00,09/20/2026 10:40:00,96,Yes,OK,No
