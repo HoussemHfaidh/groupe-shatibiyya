@@ -209,6 +209,7 @@ function saveAuthSession(session) {
 function clearAuthSession() {
   window.Jam?.logout();
   window.Review?.logout();
+  window.Khatma?.logout();
   currentAuthSession = null;
   currentUserProfile = null;
   localStorage.removeItem(AUTH_SESSION_KEY);
@@ -453,6 +454,11 @@ async function loadConfig() {
       day: config.settings?.weekBoundaryDay ?? (currentGroupId === "group2" ? 0 : 6),
       local: window.SHATIBIYYA_JAM_LOCAL_DEV, prepare: ensureFreshAuthSession,
       firebaseUrl: ((id) => () => getFirebaseUrl() ? firebasePath(`review/groups/${id}`) : "")(currentTestGroupStorageId())});
+    window.Khatma?.mount({role: "student", name: currentUserProfile?.studentName,
+      students: config.students, storageId: currentTestGroupStorageId(), host: elements.studentPanel,
+      day: config.settings?.weekBoundaryDay ?? (currentGroupId === "group2" ? 0 : 6),
+      local: window.SHATIBIYYA_JAM_LOCAL_DEV, prepare: ensureFreshAuthSession,
+      firebaseUrl: ((id) => () => getFirebaseUrl() ? firebasePath(`khatma/groups/${id}`) : "")(currentTestGroupStorageId())});
     renderWeeks(config, previousWeek);
     renderWeekState(previousValidator, previousStudent);
     elements.result.textContent = "البوابة جاهزة.";

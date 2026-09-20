@@ -911,6 +911,10 @@ function render(selectedWeekId) {
     storageId: currentDevStorageId(), ready: jamConfigReady, day: state.settings.weekBoundaryDay,
     host: document.querySelector("main.layout"), local: window.SHATIBIYYA_JAM_LOCAL_DEV,
     firebaseUrl: ((id) => () => getFirebaseUrl() ? firebasePath(`review/groups/${id}`) : "")(currentDevStorageId())});
+  if(isProfessorDevMode()) window.Khatma?.mount({role: "professor", students: state.students,
+    storageId: currentDevStorageId(), ready: jamConfigReady, day: state.settings.weekBoundaryDay,
+    host: document.querySelector("main.layout"), local: window.SHATIBIYYA_JAM_LOCAL_DEV,
+    firebaseUrl: ((id) => () => getFirebaseUrl() ? firebasePath(`khatma/groups/${id}`) : "")(currentDevStorageId())});
   sortWeeks();
   renderWeekSelect(selectedWeekId);
   renderSettings();

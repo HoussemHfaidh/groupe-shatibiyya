@@ -60,6 +60,7 @@ let store = {
   submissions: [],
   jam: {},
   review: {},
+  khatma: {},
 };
 
 async function loadStore() {
@@ -79,6 +80,7 @@ async function loadStore() {
       readyAt: parsed.readyAt || {},
       jam: parsed.jam || {},
       review: parsed.review || {},
+      khatma: parsed.khatma || {},
       submissions: Array.isArray(parsed.submissions) ? parsed.submissions : [],
     };
   } catch (error) {
@@ -249,6 +251,28 @@ async function handleApi(request, response, url) {
       return;
     }
     store.review[id] = { value: body.value, revision: current.revision + 1 };
+    await saveStore();
+    sendJson(response, 200, { ok: true });
+    return;
+  }
+  const khatmaMatch = url.pathname.match(/^\/api\/khatma\/(login-(?:test|sandbox)-(?:group[12]|catalog))$/);
+  if (khatmaMatch && ["GET", "PUT"].includes(request.method)) {
+    const id = khatmaMatch[1];
+    if (request.method === "GET") {
+      sendJson(response, 200, store.khatma[id] || { value: {}, revision: 0 });
+      return;
+    }
+    const body = await readBody(request);
+    const current = store.khatma[id] || { value: {}, revision: 0 };
+    if (body.revision !== current.revision) {
+      sendJson(response, 409, { error: "تغيرت القائمة. أعد المحاولة." });
+      return;
+    }
+    if (!body.value || typeof body.value !== "object" || Array.isArray(body.value)) {
+      sendJson(response, 400, { error: "بيانات غير صحيحة." });
+      return;
+    }
+    store.khatma[id] = { value: body.value, revision: current.revision + 1 };
     await saveStore();
     sendJson(response, 200, { ok: true });
     return;
