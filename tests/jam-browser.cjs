@@ -64,6 +64,7 @@ const production = process.env.TEST_PRODUCTION === '1';
     await professor.getByRole('button',{name:'واجب الجمع',exact:true}).click();
     const profPanel = professor.locator('.jam-panel');
     assert.equal(await profPanel.locator('.jam-missed').count(),0);
+    assert.equal(await profPanel.locator('.jam-tracking-table thead th').count(),3);
     assert.equal(writes,0);
     await profPanel.getByLabel('الطالب الذي سمّع عندي').selectOption('أحمد');
     await profPanel.getByLabel('الآية التي سمّعها').selectOption('0');
@@ -128,7 +129,7 @@ const production = process.env.TEST_PRODUCTION === '1';
     conflict = false;
     await page.clock.setSystemTime(new Date('2026-09-12T04:00:00Z'));
     await panel.getByRole('button',{name:'تحديث القائمة'}).click();
-    await panel.getByRole('heading',{name:'واجب الجمع 46',exact:true}).waitFor();
+    await panel.getByRole('heading',{name:'لا يوجد واجب جمع لهذا الأسبوع',exact:true}).waitFor();
     await panel.getByText('لم يفتح الأستاذ واجب الجمع لهذا الأسبوع بعد.',{exact:true}).waitFor();
     assert.equal(jam[assignment.id].confirmations.length,2); // Professor history preserved.
     assert.equal(jam['week-2026-09-12'],undefined);
@@ -136,7 +137,7 @@ const production = process.env.TEST_PRODUCTION === '1';
     assert.equal(await panel.locator('form').isVisible(),false);
     await professor.clock.setSystemTime(new Date('2026-09-12T04:00:00Z'));
     await professor.getByRole('button',{name:'واجب الجمع',exact:true}).click();
-    await profPanel.getByRole('heading',{name:'واجب الجمع 46',exact:true}).waitFor();
+    await profPanel.getByRole('heading',{name:'لا يوجد واجب جمع لهذا الأسبوع',exact:true}).waitFor();
     assert.equal(await profPanel.locator('.jam-missed').count(),1); // Only previous duty counts.
     assert.equal(jam['week-2026-09-12'],undefined);
     await profPanel.getByLabel('الطالب الذي سمّع عندي').selectOption('أحمد');

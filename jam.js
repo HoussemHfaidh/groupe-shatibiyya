@@ -167,7 +167,7 @@ window.Jam = (() => {
     const assignment = context.role === "professor" || JamModel.started(candidate) ? candidate : null;
     const week = JamModel.weeklyWindow(context.schedule);
     selected = assignment?.id || "";
-    heading.textContent = week ? `واجب الجمع ${week.number}` : assignment?.title || "واجب هذا الأسبوع";
+    heading.textContent = JamModel.started(assignment) ? (week ? `واجب الجمع ${week.number}` : assignment.title) : "لا يوجد واجب جمع لهذا الأسبوع";
     weekNotice.textContent = context.role === "professor"
       ? "يُفتح الواجب للطلاب بعد اعتماد أول طالب وآيته. الأسبوع دون اعتماد يبقى فارغًا ولا يدخل في النسب."
       : !assignment?.verses?.length
@@ -197,7 +197,7 @@ window.Jam = (() => {
   function drawReport(currentAssignment) {
     report.replaceChildren();
     const assignments = Object.values({ ...data, ...(currentAssignment ? { [currentAssignment.id]: currentAssignment } : {}) })
-      .filter(item => item.startDate && item.startDate <= (currentAssignment?.startDate || "9999"))
+      .filter(item => JamModel.started(item) && item.startDate && item.startDate <= (currentAssignment?.startDate || "9999"))
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
     const table = el("table", "", "tracking-table jam-tracking-table");
     table.append(el("caption", "متابعة واجب الجمع"));
