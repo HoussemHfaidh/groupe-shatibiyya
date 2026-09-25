@@ -50,6 +50,10 @@
       verses: students.map((_, index) => `الآية ${index + 1}`), confirmations: [], createdAt: now.toISOString(),
     } };
   }
+  // Existing duties retain their approval chain; empty legacy weeks stay unopened.
+  function started(assignment) {
+    return (assignment?.confirmations || []).length > 0;
+  }
   function confirm(assignment, student, verseIndex, actor, now = new Date()) {
     if (!assignment) throw new Error("اختر الواجب أولا.");
     if (assignment.startDate && !active(assignment, now)) throw new Error("انتهى وقت هذا الواجب. لا يوجد استدراك في واجب الجمع.");
@@ -74,7 +78,7 @@
     if (confirmations.some(item => item.student !== student && item.verseIndex === verseIndex)) throw new Error("هذه الآية مستعملة. اختر آية متاحة.");
     return { ...assignment, confirmations: confirmations.map(item => item === existing ? { ...item, verseIndex } : item) };
   }
-  const api = { create, confirm, correctVerse, weeklyWindow, active, current, ensureWeek };
+  const api = { started, create, confirm, correctVerse, weeklyWindow, active, current, ensureWeek };
   if (typeof module !== "undefined") module.exports = api;
   else root.JamModel = api;
 })(globalThis);

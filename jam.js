@@ -47,6 +47,7 @@ window.Jam = (() => {
       const id = selected, student = studentSelect.value, verse = Number(verseSelect.value);
       const actor = { role: context.role, name: context.name };
       mutate(store => {
+        if (actor.role === "professor") store = JamModel.ensureWeek(store, context.students, context.schedule);
         if (JamModel.current(store, context.schedule)?.id !== id) throw new Error("انتهى وقت هذا الواجب. حدّث القائمة.");
         return { ...store, [id]: JamModel.confirm(store[id], student, verse, actor) };
       });
@@ -132,9 +133,6 @@ window.Jam = (() => {
       const snapshot = await read(ctx);
       if (epoch !== generation || busy) return;
       data = snapshot.value; draw(); result.textContent = "";
-      if (JamModel.ensureWeek(data, ctx.students, ctx.schedule) !== data) {
-        await mutate(store => JamModel.ensureWeek(store, ctx.students, ctx.schedule));
-      }
     } catch (error) { if (epoch === generation) result.textContent = error.message; }
   }
   async function mutate(change, newSelection) {
@@ -165,19 +163,19 @@ window.Jam = (() => {
   function draw() {
     if (!panel || !context) return;
     const oldStudent = studentSelect.value, oldVerse = verseSelect.value;
-    const assignment = JamModel.current(data, context.schedule)
-      || JamModel.current(JamModel.ensureWeek({}, context.students, context.schedule), context.schedule);
+    const candidate = JamModel.current(JamModel.ensureWeek(data, context.students, context.schedule), context.schedule);
+    const assignment = context.role === "professor" || JamModel.started(candidate) ? candidate : null;
     const week = JamModel.weeklyWindow(context.schedule);
     selected = assignment?.id || "";
     heading.textContent = week ? `واجب الجمع ${week.number}` : assignment?.title || "واجب هذا الأسبوع";
     weekNotice.textContent = context.role === "professor"
-      ? "اعتمد الطالب واختر الآية التي سمّعها. تبقى الواجبات السابقة محفوظة في الجدول."
+      ? "يُفتح الواجب للطلاب بعد اعتماد أول طالب وآيته. الأسبوع دون اعتماد يبقى فارغًا ولا يدخل في النسب."
       : !assignment?.verses?.length
-      ? "في انتظار قائمة الآيات من الأستاذ لهذا الأسبوع."
+      ? "لم يفتح الأستاذ واجب الجمع لهذا الأسبوع بعد."
       : "هذا واجب الأسبوع الحالي فقط. لا يوجد استدراك في واجب الجمع.";
     list.replaceChildren(); verses.replaceChildren(); studentSelect.replaceChildren(); verseSelect.replaceChildren();
     const confirmations = assignment?.confirmations || [];
-    (assignment?.students || context.students).forEach(name => {
+    (assignment?.students || []).forEach(name => {
       const done = confirmations.find(c => c.student === name);
       list.append(el("div", `${name} — ${done ? `معتمد · ${done.validator}` : "غير معتمد"}`, `validator-option ${done ? "available" : "unavailable"}`));
       if (!done && name !== context.name) studentSelect.add(new Option(name, name));
@@ -212,14 +210,14 @@ window.Jam = (() => {
     const body = el("tbody");
     names.forEach((name, index) => {
       const row = el("tr");
-      const applicable = assignments.filter(a => a.students.includes(name));
+      const applicable = assignments.filter(a => JamModel.started(a) && a.students.includes(name));
       const done = applicable.filter(a => (a.confirmations || []).some(c => c.student === name)).length;
       row.append(el("td", String(index + 1)));
       const label = el("th", name); label.scope = "row"; row.append(label);
       row.append(el("td", applicable.length ? `${Math.round(done / applicable.length * 100)}%` : "—"));
       assignments.forEach(a => {
         const confirmed = (a.confirmations || []).find(c => c.student === name);
-        const included = a.students.includes(name);
+        const included = JamModel.started(a) && a.students.includes(name);
         const cell = el("td", !included ? "—" : confirmed ? `تم · ${a.verses[confirmed.verseIndex]}` : "لم يتم", included ? confirmed ? "jam-done" : "jam-missed" : "");
         if (confirmed) {
           cell.title = `اعتمد: ${confirmed.validator}`;
@@ -259,7 +257,7 @@ window.Jam = (() => {
     table.append(body);
     const foot = el("tfoot"), totals = el("tr");
     const label = el("th", "نسبة إنجاز المجموعة"); label.colSpan = 3; totals.append(label);
-    assignments.forEach(a => totals.append(el("td", `${Math.round((a.confirmations || []).length / (a.students.length || 1) * 100)}%`)));
+    assignments.forEach(a => totals.append(el("td", JamModel.started(a) ? `${Math.round((a.confirmations || []).length / (a.students.length || 1) * 100)}%` : "—")));
     foot.append(totals); table.append(foot); report.append(table);
   }
   setInterval(() => {

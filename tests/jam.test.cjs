@@ -63,3 +63,11 @@ assert.throws(() => correctVerse(second, 'أحمد', -1, {role:'professor'}, 0))
 assert.throws(() => correctVerse(corrected, 'أحمد', 2, {role:'professor'}, 0));
 assert.equal(confirm(corrected, 'عمر', 0, {role:'student',name:'أحمد'}).confirmations.length, 3);
 console.log('✓ Professor correction: free verse, preserved chain, stale edits rejected');
+
+const { started } = require('../jam-model.js');
+assert.equal(started(null), false);
+assert.equal(started(base), false);
+assert.equal(started(first), true);
+assert.equal(started(next[id45]), true);
+assert.equal(started(current(next, schedule, boundary)), false);
+console.log('✓ Only approved duties are open; empty weeks do not inherit activation');
