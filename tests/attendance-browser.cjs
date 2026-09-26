@@ -7,12 +7,17 @@ const path = require('node:path');
   try {
     const page = await browser.newPage({viewport: {width: 1280, height: 900}});
     if (process.env.TEST_ONLINE === '1') {
+      const stores = new Map();
       await page.route('https://*.firebasedatabase.app/**', route => {
         const req = route.request(), pathname = new URL(req.url()).pathname;
         const headers = {'access-control-allow-origin':'*', 'access-control-allow-headers':'*', 'access-control-expose-headers':'ETag', 'ETag':'"0"'};
         if (req.method() === 'OPTIONS') return route.fulfill({status:204, headers});
-        assert.equal(req.method(), 'GET', 'Online checks must never write Firebase');
-        const json = pathname.startsWith('/config') ? {students:['طالب تجريبي','طالب ثان'], weeks:[{id:'w1',start:1,end:10,date:'2026-09-19'}],statuses:{},settings:{weekBoundaryDay:6}} : {};
+        // Every request is fulfilled here; no Firebase read/write is forwarded.
+        if (req.method() === 'PUT' || req.method() === 'PATCH') {
+          const value = req.postDataJSON();
+          stores.set(pathname, req.method() === 'PATCH' ? {...stores.get(pathname), ...value} : value);
+        }
+        const json = stores.get(pathname) || (pathname.startsWith('/config') ? {students:['طالب تجريبي','طالب ثان'], weeks:[{id:'w1',start:1,end:10,date:'2026-09-19'}],statuses:{},settings:{weekBoundaryDay:6}} : {});
         return route.fulfill({headers,json});
       });
     }
