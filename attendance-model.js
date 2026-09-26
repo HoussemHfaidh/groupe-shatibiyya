@@ -1,5 +1,6 @@
 (function (root) {
   'use strict';
+  const matching = typeof module !== 'undefined' ? require('./attendance-matching') : root.AttendanceMatching;
   const normalize = value => String(value ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
   function time(value) {
     if (typeof value === 'number') return Math.round((value - 25569) * 86400000);
@@ -63,25 +64,57 @@
     if (!result.length) throw Error('لا توجد مشاركات في التقرير');
     return result;
   }
-  function calculate(input, teacherName = 'Gharbi') {
+  function union(intervals) {
+    const merged = [];
+    for (const interval of intervals.map(i => [...i]).sort((a,b) => a[0]-b[0])) {
+      const last = merged[merged.length-1];
+      if (last && interval[0] <= last[1]) last[1] = Math.max(last[1],interval[1]); else merged.push(interval);
+    }
+    return merged;
+  }
+  const minutes = intervals => union(intervals).reduce((sum, [a,b]) => sum + (b-a)/60000, 0);
+  function calculate(input, teacherName = 'Gharbi', options = {}) {
     const grouped = new Map();
+    const resolutions = Object.create(null);
     for (const r of input) {
-      const key = normalize(r.name);
-      const item = grouped.get(key) || { key, name: r.name, minutes: 0, join: r.join, leave: r.leave, connections: 0 };
-      item.minutes += r.minutes; item.join = Math.min(item.join, r.join); item.leave = Math.max(item.leave, r.leave); item.connections++;
+      const isTeacher = matching.compact(r.name) === matching.compact(teacherName);
+      const resolution = isTeacher ? {name:r.name,method:'teacher'} : matching.resolve(r.name, options.students, options.aliases);
+      resolutions[r.name] = resolution;
+      const key = isTeacher ? 'teacher' : resolution.name ? `student:${matching.compact(resolution.name)}` : `zoom:${matching.compact(r.name)}`;
+      const item = grouped.get(key) || { key, name:resolution.name || r.name, matched:!!resolution.name, sourceNames:[], intervals:[], zoomMinutes:0, join:r.join, leave:r.leave, connections:0 };
+      item.zoomMinutes += r.minutes; item.intervals.push([r.join,r.leave]); item.join = Math.min(item.join, r.join); item.leave = Math.max(item.leave, r.leave); item.connections++;
+      if (!item.sourceNames.includes(r.name)) item.sourceNames.push(r.name);
       grouped.set(key, item);
     }
-    const teacher = grouped.get(normalize(teacherName));
-    if (!teacher || teacher.minutes <= 0) throw Error('لم يتم العثور على الأستاذ Gharbi بمدة حضور صالحة.');
-    if (input.some(r => Math.floor(r.join / 86400000) !== Math.floor(teacher.join / 86400000))) throw Error('استورد تقرير جلسة واحدة فقط في كل مرة.');
-    const participants = [...grouped.values()].filter(p => p !== teacher).map(p => ({ ...p, ratio: p.minutes / teacher.minutes, late: p.join - teacher.join >= 300000, low: p.minutes / teacher.minutes < .7 }));
+    const teacher = grouped.get('teacher');
+    if (!teacher || !(teacher.minutes = minutes(teacher.intervals))) throw Error('لم يتم العثور على الأستاذ Gharbi بمدة حضور صالحة.');
+    teacher.intervals = union(teacher.intervals);
+    const participants = [...grouped.values()].filter(p => p !== teacher).map(p => {
+      p.intervals = union(p.intervals);
+      // Presence only counts while the professor is connected; parallel devices count once.
+      const intersections = p.intervals.flatMap(([a,b]) => teacher.intervals.map(([c,d]) => [Math.max(a,c),Math.min(b,d)]).filter(([a,b]) => b>a));
+      p.minutes = minutes(intersections);
+      return {...p, ratio:p.minutes/teacher.minutes, late:p.join-teacher.join >= 300000, low:p.minutes/teacher.minutes < .7};
+    });
     participants.sort((a, b) => a.join - b.join || a.name.localeCompare(b.name));
-    return { teacher, participants, date: new Date(teacher.join).toISOString().slice(0, 10) };
+    return { teacher, participants, resolutions, rawRecords:input, calculationVersion:2, date: new Date(teacher.join).toISOString().slice(0, 10) };
   }
   // Reference workbook displays source wall-clock times minus two hours.
   const displayTime = timestamp => new Date(timestamp - 2 * 3600000).toISOString().slice(11, 19);
   const displayDate = timestamp => new Date(timestamp - 2 * 3600000).toISOString().slice(0, 10);
-  const api = { normalize, time, parseCSV, records, calculate, displayTime, displayDate };
+  function migrateFlags(previous, result) {
+    const flags = {};
+    for (const p of result.participants) {
+      const merged = {};
+      for (const old of previous?.participants || []) {
+        if (old.key !== p.key && !(old.sourceNames || [old.name]).some(n => p.sourceNames.includes(n))) continue;
+        for (const [key,value] of Object.entries(previous.flags?.[old.key] || {})) merged[key] = Boolean(merged[key] || value);
+      }
+      flags[p.key] = merged;
+    }
+    return flags;
+  }
+  const api = { normalize, time, parseCSV, records, calculate, displayTime, displayDate, union, migrateFlags };
   if (typeof module !== 'undefined') module.exports = api;
   else root.AttendanceModel = api;
 })(typeof window === 'undefined' ? globalThis : window);

@@ -69,7 +69,8 @@ window.AttendanceReport = (() => {
       drawRow(row.lines, y, row.height, colors); y += row.height;
     }
     text('الأصفر: تأخر 5 دقائق أو أكثر · الوردي: حضور أقل من 70% · ✓ اختيار الأستاذ', width / 2, y + 33, '#44564b', '19px Arial');
-    text('الأوقات: تقرير Zoom ناقص ساعتين · النسبة: مجموع دقائق الطالب ÷ مجموع دقائق الأستاذ', width / 2, y + 63, '#44564b', '18px Arial');
+    text(session.calculationVersion === 2 ? 'الأوقات: Zoom ناقص ساعتين · المدة الفعلية دون تداخل أثناء حضور Gharbi' : 'الأوقات: تقرير Zoom ناقص ساعتين · النسبة: مجموع دقائق الطالب ÷ مجموع دقائق الأستاذ', width / 2, y + 63, '#44564b', '18px Arial');
+    if (session.calculationVersion === 2 && session.participants.some(p => !p.matched)) text('بعض أسماء Zoom غير مرتبطة بقائمة المجموعة؛ راجع المطابقة قبل اعتماد الجدول.', width / 2, y + 90, '#755500', '18px Arial');
     if (rows.some(r => r.p.ratio > 1)) text('قد تتجاوز النسبة 100% عند تداخل اتصالات الاسم نفسه في تقرير Zoom.', width / 2, y + 90, '#755500', '18px Arial');
     return canvas;
   }

@@ -5,18 +5,21 @@ importer le rapport brut détaillé Zoom en `.xlsx` ou `.csv`. Chaque séance
 reste accessible dans le sélecteur. Un fichier correspond à une séance ; les
 colonnes de résultat ajoutées dans l'exemple Excel sont ignorées.
 
-Les connexions sont regroupées par nom (espaces et casse normalisés, sans
-rapprochement approximatif entre noms). La durée est la somme de la colonne
-Zoom « Duration (minutes) », comme dans le fichier de référence. Le premier
-Join time et le dernier Leave time sont affichés. Les lignes de salle d'attente
-sont exclues.
+Les noms sont rapprochés de la liste courante du groupe sélectionné : espaces,
+ponctuation, accents, variantes arabes et transcriptions latines sont normalisés.
+Les correspondances exactes ou nettement distinctes sont automatiques ; les cas
+ambigus restent à revoir dans « مطابقة قائمة المجموعة ». Chaque nom Zoom est
+visible avec le nom officiel associé, modifiable par le professeur. Les corrections
+sont mémorisées pour ce groupe et les prochains imports dans ce navigateur. Un
+élève retiré de la liste ne conserve pas une ancienne association silencieuse.
 
-Gharbi est le professeur de référence : somme de ses durées comme dénominateur,
-première entrée comme début. « دخول متأخر » est activé dès 5 minutes de retard
-et colore le nom et l'indicateur en jaune. « حضور أقل من 70% » utilise le ratio
-non arrondi strictement inférieur à 70%. Une somme supérieure à 100% n'est pas
-plafonnée : les connexions qui se chevauchent sont additionnées comme dans
-l'exemple (Houssem : 167 / 162). Un message explique ce cas dans l'interface.
+Les connexions du même élève sont fusionnées. La durée est désormais calculée
+depuis Join time / Leave time : union des intervalles, limitée aux périodes où
+Gharbi est connecté, sans double comptage des appareils simultanés. La colonne
+Zoom arrondie reste conservée à titre de source mais ne détermine plus le ratio.
+Les minutes affichées ont deux décimales au maximum. Les seuils utilisent les
+durées exactes : retard dès 5 minutes après la première arrivée de Gharbi,
+présence faible strictement sous 70%. Les durées ne dépassent plus celle de Gharbi.
 
 Les motifs « خروج باستئذان », « خروج بدون استئذان » et
 « إخراج لعدم الاستجابة » sont trois boutons indépendants. Un clic active la
@@ -42,7 +45,7 @@ Les fichiers protégés, `.xls`, dates Excel 1904 et rapports sans heures
 d'entrée/sortie ne sont pas pris en charge ; un message bloque l'import.
 
 Stockage local au navigateur, séparé par groupe et mode DEV. Pas de
-synchronisation Firebase ni de déploiement. L'import de la même séance
+synchronisation Firebase des présences ou des correspondances. L'import de la même séance
 (mêmes premières/dernières heures du professeur) remplace ses calculs en
 conservant les choix manuels par nom. Un échec de lecture, d'analyse ou de
 stockage conserve les séances précédentes. Aucun fichier participant ni
@@ -52,3 +55,11 @@ Tests : `node --test tests/attendance.test.cjs`. Recette navigateur : lancer
 `node tests/khatma-preview.cjs`, puis `node tests/attendance-browser.cjs`
 (Playwright disponible dans NODE_PATH), avec éventuellement le chemin d'un
 exemple `.xlsx` comme argument. Le serveur simule Firebase localement.
+
+Version 2 : les enregistrements bruts sont conservés pour recalculer une séance
+après une correction. Les anciennes séances restent lisibles sans être réécrites ;
+réimporter leur CSV pour bénéficier du nouveau calcul. Les statuts manuels sont
+conservés lors du réimport et de la fusion. Les noms non rattachés restent visibles
+dans le rapport avec une note de vérification ; aucune absence n’est déduite tant
+que les identités ne sont pas résolues. Le stockage v1 (tableau de séances) est
+converti en v2 (sessions et aliases) uniquement à la prochaine sauvegarde.

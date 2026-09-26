@@ -17,6 +17,10 @@
 .attendance-toggle[aria-pressed="true"]::before { content: '✓ '; }
 .attendance-toggle:focus-visible { outline: 3px solid #175c44; outline-offset: 2px; }
 .attendance-note { color: #755500; }
+.attendance-matching { margin-block: 1rem; }
+.attendance-matching > summary { cursor: pointer; padding: 1rem; background: #fff5cf; border-radius: 8px; }
+.attendance-match-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 1rem; padding-block: 1rem; }
+.attendance-match-list select { width: 100%; }
 .attendance-actions { margin-block: 1rem; }
 .attendance-preview { padding: .5rem; border: 1px solid #d9e1dc; background: white; border-radius: 12px; }
 .attendance-preview img { display: block; width: 100%; height: auto; }
