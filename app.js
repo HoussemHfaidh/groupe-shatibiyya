@@ -953,6 +953,10 @@ function render(selectedWeekId) {
     storageId: currentGroupId, ready: jamConfigReady, day: state.settings.weekBoundaryDay,
     host: document.querySelector("main.layout"), local: false,
     firebaseUrl: ((id) => () => getFirebaseUrl() ? firebasePath(`review/groups/${id}`) : "")(currentGroupId)});
+  window.Khatma?.mount({role:"professor",...rosterContext(),students:[...state.students],
+    storageId:currentGroupId,ready:jamConfigReady,day:state.settings.weekBoundaryDay,
+    host:document.querySelector("main.layout"),local:false,
+    firebaseUrl:((id)=>()=>getFirebaseUrl()?firebasePath(`khatma/groups/${id}`):"")(currentGroupId)});
   window.Attendance?.mount({role:"professor",...rosterContext(),students:[...state.students],ready:jamConfigReady,storageId:currentGroupId,host:document.querySelector("main.layout")});
   sortWeeks();
   renderWeekSelect(selectedWeekId);

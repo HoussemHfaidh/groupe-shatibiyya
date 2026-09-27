@@ -9,7 +9,7 @@ window.Khatma = (() => {
   const field = (label, input) => { const n = el('label', '', 'field'); n.append(el('span', label), input); return n; };
   const button = (label, action) => { const b = el('button', label, 'secondary'); b.type = 'button'; b.onclick = action; return b; };
   function mount(next) {
-    if (!/^login-(?:test|sandbox)-group[12]$/.test(next.storageId)) return;
+    if (!/^(?:login-(?:test|sandbox)-)?group[12]$/.test(next.storageId)) return;
     const nextKey = JSON.stringify([next.storageId,next.role,next.name,next.students,next.studentAliases]);
     ctx = next;
     if (!panel) build();
@@ -60,8 +60,8 @@ window.Khatma = (() => {
     navigation.addEventListener('click', event => { if (event.target !== navButton) { panel.hidden = true; navButton.setAttribute('aria-pressed', 'false'); } });
     navButton.setAttribute('aria-pressed', 'false'); navigation.append(navButton); ctx.host.append(panel);
   }
-  const catalogId = c => c.storageId.replace(/group[12]$/, 'catalog');
-  const remote = (c, catalog = false) => c.local ? '' : catalog ? c.firebaseUrl().replace(/groups\/(login-(?:test|sandbox))-group[12]\.json/, 'catalogs/$1.json') : c.firebaseUrl();
+  const catalogId = c => /^group[12]$/.test(c.storageId) ? 'production-catalog' : c.storageId.replace(/group[12]$/, 'catalog');
+  const remote = (c, catalog = false) => c.local ? '' : catalog ? c.firebaseUrl().replace(/groups\/(login-(?:test|sandbox))-group[12]\.json/, 'catalogs/$1.json').replace(/groups\/group[12]\.json/, 'catalogs/production.json') : c.firebaseUrl();
   async function read(c, catalog = false) {
     if(!catalog) await window.Roster?.refresh(c);
     await c.prepare?.();
