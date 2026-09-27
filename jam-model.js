@@ -42,8 +42,16 @@
     if (!week) return store;
     const existing = store[week.id];
     if (existing) {
-      if (existing.verses?.length || existing.confirmations?.length) return store;
-      return { ...store, [week.id]: { ...existing, verses: existing.students.map((_, index) => `الآية ${index + 1}`) } };
+      if (existing.verses?.length || existing.confirmations?.length) {
+        if(JSON.stringify(existing.students)===JSON.stringify(students)) return store;
+        const verses=[...(existing.verses || [])];
+        const confirmations=existing.confirmations || [];
+        const used=new Set(confirmations.map(c=>c.verseIndex));
+        const waiting=students.filter(n=>!confirmations.some(c=>c.student===n)).length;
+        while(verses.filter((_,i)=>!used.has(i)).length < waiting) verses.push(`الآية ${verses.length+1}`);
+        return {...store,[week.id]:{...existing,students:[...students],verses}};
+      }
+      return { ...store, [week.id]: { ...existing, students:[...students], verses: students.map((_, index) => `الآية ${index + 1}`) } };
     }
     return { ...store, [week.id]: {
       ...week, title: `واجب الجمع ${week.number}`, students: [...students],
@@ -63,7 +71,7 @@
     if (confirmations.some(item => item.student === student)) throw new Error("تم اعتماد هذا الطالب من قبل.");
     if (confirmations.some(item => item.verseIndex === verseIndex)) throw new Error("هذه الآية مستعملة. اختر آية متاحة.");
     if (actor.role !== "professor") {
-      if (!actor.name || actor.name === student) throw new Error("لا يمكن للطالب أن يؤكد نفسه.");
+      if (!actor.name || !assignment.students.includes(actor.name) || actor.name === student) throw new Error("لا يمكن للطالب أن يؤكد نفسه.");
       if (!confirmations.some(item => item.student === actor.name)) throw new Error("يجب أن يعتمدك الأستاذ أو طالب معتمد أولا.");
     }
     return { ...assignment, confirmations: [...confirmations, { student, verseIndex, validator: actor.role === "professor" ? "الأستاذ" : actor.name, createdAt: new Date().toISOString() }] };

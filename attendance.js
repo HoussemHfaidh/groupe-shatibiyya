@@ -6,16 +6,25 @@ window.Attendance = (() => {
   const el = (tag, text, cls) => { const n = document.createElement(tag); if (text) n.textContent = text; if (cls) n.className = cls; return n; };
   const field = (label, control) => { const n = el('label', '', 'field'); n.append(el('span', label), control); return n; };
   function mount(next) {
-    if (next.role !== 'professor' || !/^login-(test|sandbox)-group[12]$/.test(next.storageId)) return;
-    const rosterChanged = JSON.stringify(ctx?.students) !== JSON.stringify(next.students) || ctx?.ready !== next.ready;
+    if (next.role !== 'professor' || !/^(?:login-(?:test|sandbox)-)?group[12]$/.test(next.storageId)) return;
+    const rosterChanged = JSON.stringify(ctx?.students) !== JSON.stringify(next.students) || ctx?.ready !== next.ready || JSON.stringify(ctx?.studentAliases) !== JSON.stringify(next.studentAliases);
     ctx = next;
     if (!panel) build();
     const nextKey = `shatibiyya-attendance-v1:${ctx.storageId}`;
-    if (nextKey === key) { file.disabled = busy || ctx.ready === false; if (rosterChanged) draw(); return; }
+    if (nextKey === key) { file.disabled = busy || ctx.ready === false; if (rosterChanged) { reconcileRoster(); draw(); } return; }
     key = nextKey; selected = ''; data = []; learned = {}; file.value = ''; status.textContent = '';
     try { const stored = JSON.parse(localStorage.getItem(key) || '[]'); data = Array.isArray(stored) ? stored : stored.sessions; learned = Array.isArray(stored) ? {} : stored.aliases || {}; if (!Array.isArray(data)) throw Error(); }
     catch { status.textContent = 'تعذر قراءة الجلسات المحفوظة. لم يتم تغييرها.'; file.disabled = true; return; }
-    file.disabled = busy || ctx.ready === false; draw();
+    reconcileRoster(); file.disabled = busy || ctx.ready === false; draw();
+  }
+  function reconcileRoster() {
+    if(!window.RosterModel || !ctx.studentAliases?.length) return;
+    const resolve=name=>RosterModel.resolve(name,ctx.studentAliases);
+    const aliases=Object.fromEntries(Object.entries(learned).map(([source,target])=>[source,typeof target==='string'?resolve(target):{...target,customName:resolve(target.customName)}]));
+    for(const alias of ctx.studentAliases) aliases[AttendanceMatching.compact(alias.from)]={customName:resolve(alias.to)};
+    const sessions=data.map(session=>({...session,participants:session.participants.map(p=>({...p,name:resolve(p.name)})),
+      resolutions:Object.fromEntries(Object.entries(session.resolutions || {}).map(([source,r])=>[source,{...r,name:resolve(r.name),candidates:r.candidates?.map(resolve)}]))}));
+    if(JSON.stringify(aliases)!==JSON.stringify(learned) || JSON.stringify(sessions)!==JSON.stringify(data)) persist(sessions,aliases);
   }
   function build() {
     panel = el('section', '', 'panel attendance-panel'); panel.hidden = true;
@@ -31,7 +40,7 @@ window.Attendance = (() => {
     });
     preview = el('div', '', 'attendance-preview'); previewImage = el('img'); previewImage.alt = 'جدول الحضور كاملا بجميع المشاركين والحالات'; preview.append(previewImage);
     matchingBox = el('details', '', 'attendance-matching');
-    editor = el('details', '', 'attendance-editor'); editor.append(el('summary', 'تعديل حالات الخروج — اضغط لفتح الجدول'), report);
+    editor = el('details', '', 'attendance-editor'); editor.append(el('summary', 'تعديل الأسماء وحالات الخروج أو حذف طالب'), report);
     dialog = el('dialog', '', 'attendance-dialog');
     const close = el('button', 'إغلاق', 'secondary'); close.type = 'button'; close.onclick = () => dialog.close();
     dialogImage = el('img'); dialogImage.alt = previewImage.alt; dialog.append(close, dialogImage); panel.append(dialog);
@@ -55,15 +64,20 @@ window.Attendance = (() => {
   }
   async function importFile() {
     const uploaded = file.files[0]; if (!uploaded || busy) return;
-    const originalKey = key, options = {students:[...(ctx.students || [])],aliases:{...learned}}; busy = true; file.disabled = true; status.textContent = 'جار تحليل التقرير...';
+    const originalKey = key, context=ctx; busy = true; file.disabled = true; status.textContent = 'جار تحليل التقرير...';
     matchingBox.querySelectorAll('select').forEach(n => n.disabled = true);
     try {
+      await window.Roster?.refresh(context);
+      if(key!==originalKey)return;
+      reconcileRoster();
+      const options={students:[...(context.students || [])],aliases:{...learned}};
       const rows = await AttendanceImport.read(uploaded);
       const result = AttendanceModel.calculate(rows, 'Gharbi', options);
       if (key !== originalKey) return;
       const id = `${result.teacher.join}-${result.teacher.leave}`;
       const previous = data.find(s => s.id === id);
-      const session = { ...result, id, filename: uploaded.name, flags: AttendanceModel.migrateFlags(previous, result) };
+      let session = { ...result, id, filename: uploaded.name, flags: AttendanceModel.migrateFlags(previous, result), excludedNames:previous?.excludedNames || [] };
+      if (session.excludedNames.length) session = AttendanceModel.recalculateSession(session, options);
       const next = [session, ...data.filter(s => s.id !== id)].sort((a, b) => b.teacher.join - a.teacher.join);
       if (!persist(next)) return;
       selected = id; draw(); status.textContent = `تم حفظ الجلسة: ${rows.length} اتصال، ${result.participants.length} مشاركا دون الأستاذ.`;
@@ -75,23 +89,24 @@ window.Attendance = (() => {
     if (!current) return;
     if (!current.rawRecords) {
       matchingBox.append(el('summary', 'جلسة قديمة: أعد استيراد CSV لتطبيق مطابقة الأسماء وتصحيح التداخل.'));
+      appendRestoration(current);
       return;
     }
     const entries = Object.entries(current.resolutions || {}).filter(([,r]) => r.method !== 'teacher');
-    const unresolved = entries.filter(([,r]) => !r.name && r.method !== 'unlisted').length;
+    const unresolved = entries.filter(([,r]) => !r.name && !['unlisted','excluded'].includes(r.method)).length;
     matchingBox.append(el('summary', `مطابقة قائمة المجموعة · ${unresolved} اسم يحتاج مراجعة`));
     matchingBox.append(el('p', 'تُحفظ التصحيحات لهذه المجموعة وللاستيرادات القادمة. يمكنك تعديل أي مطابقة. تبقى الجلسات السابقة كما حُفظت.', 'subtitle'));
     const list = el('div', '', 'attendance-match-list');
-    entries.forEach(([zoomName, resolution]) => {
+    entries.filter(([,r])=>r.method !== 'excluded').forEach(([zoomName, resolution]) => {
       const select = el('select'); select.setAttribute('aria-label', `مطابقة ${zoomName}`);
       select.add(new Option('غير مرتبط بقائمة المجموعة', ''));
       for (const student of ctx.students || []) select.add(new Option(student,student));
+      if (resolution.name && !(ctx.students || []).includes(resolution.name)) select.add(new Option(`${resolution.name} — اسم يدوي`,resolution.name));
       select.value = resolution.name || '';
       select.disabled = busy || ctx.ready === false;
       select.onchange = () => {
         const aliases = {...learned, [AttendanceMatching.compact(zoomName)]:select.value};
-        const result = AttendanceModel.calculate(current.rawRecords, 'Gharbi', {students:ctx.students || [], aliases});
-        const updated = {...current, ...result, flags:AttendanceModel.migrateFlags(current, result)};
+        const updated = AttendanceModel.recalculateSession(current,{students:ctx.students || [],aliases});
         if (persist(data.map(s => s.id === current.id ? updated : s), aliases)) {
           draw(); matchingBox.open = true; status.textContent = 'تم حفظ المطابقة وإعادة الحساب دون تكرار أوقات الاتصال.';
         } else select.value = resolution.name || '';
@@ -101,6 +116,27 @@ window.Attendance = (() => {
       list.append(row);
     });
     matchingBox.append(list);
+    appendRestoration(current);
+  }
+  function saveSession(updated, aliases = learned) {
+    if (!persist(data.map(s => s.id === updated.id ? updated : s), aliases)) return false;
+    draw(); return true;
+  }
+  function appendRestoration(current) {
+    const excluded = current.rawRecords ? Object.entries(current.resolutions || {}).filter(([,r]) => r.method === 'excluded').map(([name]) => ({key:AttendanceMatching.compact(name),name})) : current.removedParticipants || [];
+    if (!excluded.length) return;
+    const area = el('div', '', 'attendance-removed-list'); area.append(el('h3','المحذوفون من هذه الجلسة'));
+    const seen = new Set();
+    for (const item of excluded) {
+      if (seen.has(item.key)) continue; seen.add(item.key);
+      const button = el('button', `استعادة ${item.name}`, 'secondary'); button.type = 'button'; button.disabled = busy;
+      button.onclick = () => {
+        const updated = AttendanceModel.restoreParticipant(current,item.key,{students:ctx.students || [],aliases:learned});
+        if (saveSession(updated)) {matchingBox.open = true; status.textContent = 'تمت استعادة الطالب إلى الجدول.';}
+      };
+      area.append(button);
+    }
+    matchingBox.append(area);
   }
   const clock = t => AttendanceModel.displayTime(t);
   const number = n => Number(n.toFixed(2)).toString();
@@ -139,12 +175,12 @@ window.Attendance = (() => {
     summary.append(el('strong', `${current.teacher.name} · ${number(current.teacher.minutes)} دقيقة · ${clock(current.teacher.join)} — ${clock(current.teacher.leave)}`), el('p', `${current.participants.length} مشاركا · ${current.participants.filter(p => p.late).length} دخول متأخر · ${current.participants.filter(p => p.low).length} حضور أقل من 70%`));
     if (current.participants.some(p => p.ratio > 1)) summary.append(el('p', 'توجد نسبة تتجاوز 100% بسبب جمع مدد Zoom؛ قد تتداخل اتصالات الاسم نفسه.', 'attendance-note'));
     const table = el('table', '', 'attendance-table'), head = el('thead'), header = el('tr'), body = el('tbody');
-    ['الاسم', 'مدة الحضور (دق)', 'نسبة الحضور', 'وقت الدخول', 'وقت الخروج', 'دخول متأخر', 'حضور أقل من 70%', ...manual.map(m => m[1])].forEach(label => { const th = el('th', label); th.scope = 'col'; header.append(th); });
+    ['الاسم', 'مدة الحضور (دق)', 'نسبة الحضور', 'وقت الدخول', 'وقت الخروج', 'دخول متأخر', 'حضور أقل من 70%', ...manual.map(m => m[1]), 'إدارة الاسم'].forEach(label => { const th = el('th', label); th.scope = 'col'; header.append(th); });
     head.append(header); table.append(head, body);
     const listed = [{...current.teacher, ratio:1, late:false, low:false, isTeacher:true}, ...current.participants];
     listed.forEach(p => {
       const row = el('tr', '', p.isTeacher ? 'attendance-teacher' : ''), name = el('th', p.name, p.late ? 'attendance-late' : ''); name.scope = 'row'; row.append(name);
-      [number(p.minutes), `${number(p.ratio * 100)}%`, clock(p.join), clock(p.leave)].forEach(value => row.append(el('td', value)));
+      [number(p.minutes), AttendanceModel.formatPercent(p.ratio), clock(p.join), clock(p.leave)].forEach(value => row.append(el('td', value)));
       row.append(el('td', p.late ? 'نعم' : '—', p.late ? 'attendance-late' : ''), el('td', p.low ? 'نعم' : '—', p.low ? 'attendance-low' : ''));
       manual.forEach(([id, label]) => {
         if (p.isTeacher) { row.append(el('td', '—')); return; }
@@ -159,6 +195,29 @@ window.Attendance = (() => {
         };
         cell.append(button); row.append(cell);
       });
+      const management = el('td');
+      if (!p.isTeacher) {
+        const form = el('form', '', 'attendance-name-form'), input = el('input'); input.value = p.name; input.required = true; input.maxLength = 160;
+        input.setAttribute('aria-label', `تعديل اسم ${p.name}`);
+        const save = el('button', 'حفظ الاسم', 'secondary'); save.type = 'submit';
+        save.setAttribute('aria-label', `حفظ اسم ${p.name}`);
+        form.append(input,save);
+        form.onsubmit = event => {
+          event.preventDefault(); if (busy || !form.reportValidity()) return;
+          try {
+            const result = AttendanceModel.renameParticipant(current,p.key,input.value,learned,ctx.students || []);
+            if (saveSession(result.value,result.aliases)) status.textContent = 'تم حفظ الاسم وتذكّره للاستيرادات القادمة في هذه المجموعة.';
+          } catch(e) { status.textContent = e.message; }
+        };
+        const remove = el('button','حذف من هذه الجلسة','secondary'); remove.type = 'button'; remove.setAttribute('aria-label',`حذف ${p.name}`);
+        remove.onclick = () => {
+          if (busy) return;
+          const updated = AttendanceModel.removeParticipant(current,p.key,{students:ctx.students || [],aliases:learned});
+          if (saveSession(updated)) {matchingBox.open = true; status.textContent = 'تم حذف السطر من هذه الجلسة والصورة. يمكنك استعادته من قائمة المحذوفين.';}
+        };
+        management.append(form,remove);
+      } else management.textContent = '—';
+      row.append(management);
       body.append(row);
     });
     report.append(table);

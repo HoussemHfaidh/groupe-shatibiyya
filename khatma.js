@@ -10,7 +10,7 @@ window.Khatma = (() => {
   const button = (label, action) => { const b = el('button', label, 'secondary'); b.type = 'button'; b.onclick = action; return b; };
   function mount(next) {
     if (!/^login-(?:test|sandbox)-group[12]$/.test(next.storageId)) return;
-    const nextKey = `${next.storageId}:${next.role}:${next.name || ''}`;
+    const nextKey = JSON.stringify([next.storageId,next.role,next.name,next.students,next.studentAliases]);
     ctx = next;
     if (!panel) build();
     if (key !== nextKey) {
@@ -63,12 +63,14 @@ window.Khatma = (() => {
   const catalogId = c => c.storageId.replace(/group[12]$/, 'catalog');
   const remote = (c, catalog = false) => c.local ? '' : catalog ? c.firebaseUrl().replace(/groups\/(login-(?:test|sandbox))-group[12]\.json/, 'catalogs/$1.json') : c.firebaseUrl();
   async function read(c, catalog = false) {
+    if(!catalog) await window.Roster?.refresh(c);
     await c.prepare?.();
     const url = remote(c, catalog);
     const response = await fetch(url || `/api/khatma/${encodeURIComponent(catalog ? catalogId(c) : c.storageId)}`, { cache: 'no-store', headers: url ? { 'X-Firebase-ETag': 'true' } : {} });
     if (!response.ok) throw Error('تعذر تحميل الختمات. تحقق من الاتصال وصلاحيات البيانات ثم أعد المحاولة.');
     const snapshot = url ? { value: await response.json() || {}, etag: response.headers.get('ETag') } : await response.json();
     if (!catalog) { const shared = await read(c, true); snapshot.value = { ...snapshot.value, settings: shared.value.settings || {} }; }
+    if(!catalog && window.Roster) snapshot.value=Roster.project(snapshot.value,c);
     return snapshot;
   }
   async function refresh() {
@@ -176,7 +178,7 @@ window.Khatma = (() => {
     if (!loaded) { report.append(el('p', 'ستظهر البيانات بعد تحميل الختمات.')); return; }
     if (ctx.role === 'professor' && !selectedStudent) {
       report.append(el('h3', `متابعة الأسبوع · ${selectedWeek}`));
-      const names = [...new Set([...ctx.students, ...(data.weeks?.[selectedWeek]?.students || []), ...KhatmaModel.entries(data, null, selectedWeek).map(e => e.student)])];
+      const names = [...new Set([...ctx.students, ...(selectedWeek === KhatmaModel.week(ctx.day).id ? [] : (data.weeks?.[selectedWeek]?.students || [])), ...KhatmaModel.entries(data, null, selectedWeek).map(e => e.student)])];
       const endDate = new Date(Date.parse(selectedWeek) + 604800000).toISOString().slice(0, 10);
       const body = table(['الطالب', 'التعبئة هذا الأسبوع', 'عدد التسجيلات', 'آخر موضع معروف حتى نهاية الأسبوع', 'التفاصيل'], 'khatma-weekly');
       for (const name of names) {

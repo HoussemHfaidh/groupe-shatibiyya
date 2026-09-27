@@ -416,7 +416,7 @@ async function loadConfig() {
       ? await firebaseRequest(groupPath("config"))
       : await localRequest("/api/config");
 
-    if ((!config?.students?.length || !config?.weeks?.length) && getFirebaseUrl()) {
+    if ((!(Array.isArray(config?.students) || config?.rosterInitialized) || !config?.weeks?.length) && getFirebaseUrl()) {
       const productionConfig = await firebaseRequest(productionGroupPath("config"));
       if (productionConfig?.students?.length && productionConfig?.weeks?.length) {
         config = {
@@ -433,29 +433,41 @@ async function loadConfig() {
       }
     }
 
-    if (!config?.students?.length || !config?.weeks?.length) {
+    if (!(Array.isArray(config?.students) || config?.rosterInitialized) || !config?.weeks?.length) {
       throw new Error("الإعدادات غير موجودة.");
     }
 
+    config=RosterModel.config(config);
+    if(currentUserProfile){currentUserProfile.studentName=RosterModel.resolve(currentUserProfile.studentName,config.studentAliases);elements.accountName.textContent=`${currentUserProfile.studentName} - ${groupLabel(currentGroupId)}`;}
+    if(!config.students.includes(currentUserProfile?.studentName)) {
+      window.Jam?.logout();window.Review?.logout();window.Khatma?.logout();
+      currentConfig=config;
+      elements.studentSelect.replaceChildren();elements.validatorSelect.replaceChildren();
+      elements.studentPanel.querySelectorAll(".jam-navigation button, #submissionForm button").forEach(n=>n.disabled=true);
+      elements.studentPanel.querySelectorAll(".jam-panel,.review-panel,.khatma-panel").forEach(n=>n.hidden=true);
+      elements.result.textContent="لم تعد مسجلا في هذه المجموعة. تواصل مع الأستاذ.";
+      return;
+    }
+    elements.studentPanel.querySelectorAll(".jam-navigation button, #submissionForm button").forEach(n=>n.disabled=false);
     currentConfig = config;
     window.Jam?.mount({
       role: "student",
       enabled: currentGroupId === "group1",
       schedule: window.SHATIBIYYA_JAM_SCHEDULES?.[currentGroupId],
       name: currentUserProfile?.studentName,
-      students: config.students,
+      students: config.students, studentAliases:config.studentAliases, rosterUrl:((path)=>()=>getFirebaseUrl()?firebasePath(path):"")(groupPath("config")),
       storageId: currentTestGroupStorageId(),
       host: elements.studentPanel,
       prepare: ensureFreshAuthSession,
       firebaseUrl: ((storageId) => () => getFirebaseUrl() ? firebasePath(`jam/groups/${storageId}`) : "")(currentTestGroupStorageId()),
     });
     window.Review?.mount({role: "student", name: currentUserProfile?.studentName,
-      students: config.students, storageId: currentTestGroupStorageId(), host: elements.studentPanel,
+      students: config.students, studentAliases:config.studentAliases, rosterUrl:((path)=>()=>getFirebaseUrl()?firebasePath(path):"")(groupPath("config")), storageId: currentTestGroupStorageId(), host: elements.studentPanel,
       day: config.settings?.weekBoundaryDay ?? (currentGroupId === "group2" ? 0 : 6),
       local: window.SHATIBIYYA_JAM_LOCAL_DEV, prepare: ensureFreshAuthSession,
       firebaseUrl: ((id) => () => getFirebaseUrl() ? firebasePath(`review/groups/${id}`) : "")(currentTestGroupStorageId())});
     window.Khatma?.mount({role: "student", name: currentUserProfile?.studentName,
-      students: config.students, storageId: currentTestGroupStorageId(), host: elements.studentPanel,
+      students: config.students, studentAliases:config.studentAliases, rosterUrl:((path)=>()=>getFirebaseUrl()?firebasePath(path):"")(groupPath("config")), storageId: currentTestGroupStorageId(), host: elements.studentPanel,
       day: config.settings?.weekBoundaryDay ?? (currentGroupId === "group2" ? 0 : 6),
       local: window.SHATIBIYYA_JAM_LOCAL_DEV, prepare: ensureFreshAuthSession,
       firebaseUrl: ((id) => () => getFirebaseUrl() ? firebasePath(`khatma/groups/${id}`) : "")(currentTestGroupStorageId())});
@@ -629,8 +641,12 @@ async function applyConfirmedStatus(student, weekId, status) {
 
 async function submitResponse(event) {
   event.preventDefault();
-  const validator = currentUserProfile?.studentName || elements.validatorSelect.value;
-  const student = elements.studentSelect.value;
+  let checked;
+  try{checked=RosterModel.config(getFirebaseUrl()?await firebaseRequest(groupPath("config")):await localRequest("/api/config"));}
+  catch{elements.result.textContent="تعذر تحديث قائمة المجموعة. أعد المحاولة.";return;}
+  const validator=RosterModel.resolve(currentUserProfile?.studentName || elements.validatorSelect.value,checked.studentAliases);
+  if(!checked.students.includes(validator) || !checked.students.includes(RosterModel.resolve(elements.studentSelect.value,checked.studentAliases))){elements.result.textContent="تغيرت قائمة المجموعة. حدّث الصفحة.";return;}
+  const student = RosterModel.resolve(elements.studentSelect.value,checked.studentAliases);
   const weekId = elements.weekSelect.value;
 
   if (!validator || !student) {

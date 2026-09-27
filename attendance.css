@@ -21,6 +21,10 @@
 .attendance-matching > summary { cursor: pointer; padding: 1rem; background: #fff5cf; border-radius: 8px; }
 .attendance-match-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 1rem; padding-block: 1rem; }
 .attendance-match-list select { width: 100%; }
+.attendance-name-form { display: flex; gap: .4rem; min-width: 260px; margin-bottom: .4rem; }
+.attendance-name-form input { min-width: 0; width: 180px; }
+.attendance-removed-list { display: flex; flex-wrap: wrap; gap: .5rem; margin-block: 1rem; }
+.attendance-removed-list h3 { flex-basis: 100%; }
 .attendance-actions { margin-block: 1rem; }
 .attendance-preview { padding: .5rem; border: 1px solid #d9e1dc; background: white; border-radius: 12px; }
 .attendance-preview img { display: block; width: 100%; height: auto; }

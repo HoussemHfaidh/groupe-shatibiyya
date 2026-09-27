@@ -19,7 +19,7 @@ window.Jam = (() => {
     context = ctx;
     if (!panel) build();
     applyStudentVisibility?.();
-    const nextKey = ctx.storageId;
+    const nextKey = JSON.stringify([ctx.storageId,ctx.students,ctx.studentAliases]);
     if (key !== nextKey) {
       key = nextKey; data = {}; selected = ""; generation++;
       draw();
@@ -49,7 +49,7 @@ window.Jam = (() => {
       mutate(store => {
         if (actor.role === "professor") store = JamModel.ensureWeek(store, context.students, context.schedule);
         if (JamModel.current(store, context.schedule)?.id !== id) throw new Error("انتهى وقت هذا الواجب. حدّث القائمة.");
-        return { ...store, [id]: JamModel.confirm(store[id], student, verse, actor) };
+        return { ...store, [id]: JamModel.confirm(store[id], window.RosterModel?.resolve(student,context.studentAliases) || student, verse, {...actor,name:window.RosterModel?.resolve(actor.name,context.studentAliases) || actor.name}) };
       });
     });
     result = el("div", "", "result-box"); result.setAttribute("aria-live", "polite");
@@ -116,15 +116,22 @@ window.Jam = (() => {
     return window.SHATIBIYYA_JAM_LOCAL_DEV ? "" : ctx.firebaseUrl();
   }
   async function read(ctx) {
+    await window.Roster?.refresh(ctx);
+    const project = snapshot => {
+      const canonical=window.Roster?.project(snapshot.value,ctx) || snapshot.value;
+      const value=JamModel.ensureWeek(canonical,ctx.students,ctx.schedule);
+      const current=JamModel.current(canonical,ctx.schedule);
+      return {...snapshot,value,rosterChanged:JamModel.started(current) && value!==canonical};
+    };
     if (backendUrl(ctx)) {
       await ctx.prepare?.();
       const response = await fetch(backendUrl(ctx), { headers: { "X-Firebase-ETag": "true" }, cache: "no-store" });
       if (!response.ok) throw new Error("تعذر تحميل واجب الجمع.");
-      return { value: await response.json() || {}, etag: response.headers.get("ETag") };
+      return project({ value: await response.json() || {}, etag: response.headers.get("ETag") });
     }
     const response = await fetch(`/api/jam/${encodeURIComponent(ctx.storageId)}`, { cache: "no-store" });
     if (!response.ok) throw new Error("تعذر تحميل واجب الجمع.");
-    return response.json();
+    return project(await response.json());
   }
   async function refresh() {
     if (busy || !enabled() || context.ready === false) return;
@@ -133,6 +140,7 @@ window.Jam = (() => {
       const snapshot = await read(ctx);
       if (epoch !== generation || busy) return;
       data = snapshot.value; draw(); result.textContent = "";
+      if(snapshot.rosterChanged)await mutate(store=>store);
     } catch (error) { if (epoch === generation) result.textContent = error.message; }
   }
   async function mutate(change, newSelection) {
@@ -158,7 +166,7 @@ window.Jam = (() => {
     } catch (error) {
       if (epoch === generation) result.textContent = error.message;
       return false;
-    } finally { busy = false; draw(); }
+    } finally { busy = false; draw(); if(epoch !== generation && context)refresh(); }
   }
   function draw() {
     if (!panel || !context) return;
@@ -188,7 +196,7 @@ window.Jam = (() => {
     if ([...studentSelect.options].some(o => o.value === oldStudent)) studentSelect.value = oldStudent;
     if ([...verseSelect.options].some(o => o.value === oldVerse)) verseSelect.value = oldVerse;
     if (context.role === "professor") drawReport(assignment);
-    const allowed = (context.role === "professor" || confirmations.some(c => c.student === context.name)) && context.ready !== false;
+    const allowed = (context.role === "professor" || (context.students.includes(context.name) && confirmations.some(c => c.student === context.name))) && context.ready !== false;
     form.hidden = !assignment;
     [...form.elements].forEach(control => { control.disabled = busy || !allowed || !studentSelect.options.length || !verseSelect.options.length; });
 

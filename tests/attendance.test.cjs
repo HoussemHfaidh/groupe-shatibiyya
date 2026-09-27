@@ -3,6 +3,41 @@ const assert = require('node:assert/strict');
 const m = require('../attendance-model');
 const start = Date.UTC(2026, 8, 12, 7, 46, 2);
 const record = (name, minutes, delay = 0) => ({ name, minutes, join: start + delay * 60000, leave: start + (delay + minutes) * 60000 });
+test('group 1 transliterations match its own roster; ambiguous Asma stays editable',()=>{
+ const match=require('../attendance-matching');
+ const roster=['حمزة الورتاني','أشرف السماوي','حسنين عكروت','آدم الماجري','معز بن زيد','حسام حفيظ','مالك بن عبدالله','أسماء شلبي','أسماء قرشان'];
+ for(const [zoom,student] of [['Hamza Wertani',roster[0]],['AchrafSMAOUI',roster[1]],['Hassanine AKROUT',roster[2]],['adem mejri',roster[3]],['Moez',roster[4]],['Houssem',roster[5]],['Melek',roster[6]]]) assert.equal(match.resolve(zoom,roster).name,student);
+ assert.equal(match.resolve('اسماء',roster).name,null);
+});
+test('professor custom names override matching and persist in aliases',()=>{
+ const students=['أشرف قرمش'];
+ const s={...m.calculate([record('Gharbi',100),record('Achraf Guermech',90)],'Gharbi',{students}),id:'s',flags:{}};
+ const renamed=m.renameParticipant(s,s.participants[0].key,'اسم اختاره الأستاذ',{},students);
+ assert.equal(renamed.value.participants[0].name,'اسم اختاره الأستاذ');
+ assert.equal(m.calculate(s.rawRecords,'Gharbi',{students,aliases:renamed.aliases}).participants[0].name,'اسم اختاره الأستاذ');
+ assert.throws(()=>m.renameParticipant(s,s.participants[0].key,'   '));
+ assert.throws(()=>m.renameParticipant(s,s.participants[0].key,'x'.repeat(161)));
+});
+test('deletion excludes all source variants and survives recalculation; restore keeps flags',()=>{
+ const options={students:['أشرف قرمش']};
+ const s={...m.calculate([record('Gharbi',100),record('Achraf Guermech',70),record('Achraf.Guermech',90,10)],'Gharbi',options),flags:{}};
+ const key=s.participants[0].key; s.flags[key]={excused:true};
+ let removed=m.removeParticipant(s,key,options);
+ assert.equal(removed.participants.length,0); assert.equal(removed.excludedNames.length,1);
+ assert.equal(m.recalculateSession(removed,options).participants.length,0);
+ const restored=m.restoreParticipant(removed,removed.excludedNames[0],options);
+ assert.equal(restored.participants.length,1); assert.equal(restored.participants[0].minutes,100); assert.equal(restored.flags[key].excused,true);
+ assert.equal(s.participants.length,1);
+});
+test('legacy rows support rename, delete, restore and retain original source for reimport',()=>{
+ const old={participants:[{key:'old',name:'Zoom Old',minutes:60,join:start,leave:start+3600000}],flags:{old:{removed:true}}};
+ const renamed=m.renameParticipant(old,'old','Nom Corrigé');
+ const deleted=m.removeParticipant(renamed.value,'old');
+ assert.equal(deleted.participants.length,0); assert.deepEqual(deleted.excludedNames,['zoomold']);
+ const restored=m.restoreParticipant(deleted,'old');
+ assert.equal(restored.participants[0].name,'Nom Corrigé'); assert.deepEqual(restored.excludedNames,[]);
+ assert.equal(restored.flags.old.removed,true);
+});
 test('punctuation, Latin/Arabic spelling and group roster map one student', () => {
   const r = m.calculate([record('Gharbi',100), record('Achraf Guermech',70),record('Achraf.Guermech',85,15)], 'Gharbi', {students:['أشرف قرمش','نور القاضي']});
   assert.equal(r.participants.length,1);
@@ -71,4 +106,15 @@ test('GMT-2 display subtracts two hours, including date rollover, without changi
   assert.equal(m.displayTime(early), '23:30:00');
   assert.equal(m.displayDate(early), '2026-09-11');
   assert.equal(m.calculate([record('Gharbi', 162), record('Ali', 160)]).participants[0].minutes, 160);
+});
+
+test('percentage uses professor actual duration, never rounded Zoom minutes, and displays threshold honestly',()=>{
+ const result=m.calculate([record('Gharbi',60),record('Exact',42),record('Below',41.999),record('Whole',90,-15)]);
+ const exact=result.participants.find(p=>p.name==='Exact'), below=result.participants.find(p=>p.name==='Below'),whole=result.participants.find(p=>p.name==='Whole');
+ assert.equal(exact.ratio,.7);assert.equal(exact.low,false);assert.equal(m.formatPercent(exact.ratio),'70%');
+ assert.equal(below.low,true);assert.notEqual(m.formatPercent(below.ratio),'70%');
+ assert.equal(whole.ratio,1);assert.equal(m.formatPercent(whole.ratio),'100%');
+ // Zoom's independently rounded Duration column cannot alter percentages.
+ const raw=[record('Gharbi',60),record('Exact',42)];raw[0].minutes=61;raw[1].minutes=43;
+ assert.equal(m.calculate(raw).participants[0].ratio,.7);
 });

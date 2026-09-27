@@ -32,7 +32,7 @@ window.AttendanceReport = (() => {
     const listed = [{...session.teacher, ratio:1, late:false, low:false, isTeacher:true}, ...session.participants];
     const rows = listed.map(p => {
       const flags = session.flags[p.key] || {};
-      const values = [p.name, number(p.minutes), `${number(p.ratio * 100)}%`, AttendanceModel.displayTime(p.join), AttendanceModel.displayTime(p.leave), p.late ? 'نعم' : '—', p.low ? 'نعم' : '—', flags.excused ? '✓' : '—', flags.unexcused ? '✓' : '—', flags.removed ? '✓' : '—'];
+      const values = [p.name, number(p.minutes), AttendanceModel.formatPercent(p.ratio), AttendanceModel.displayTime(p.join), AttendanceModel.displayTime(p.leave), p.late ? 'نعم' : '—', p.low ? 'نعم' : '—', flags.excused ? '✓' : '—', flags.unexcused ? '✓' : '—', flags.removed ? '✓' : '—'];
       const lines = values.map((v, i) => { c.font = `${i === 0 ? 'bold ' : ''}20px Arial`; return wrap(v, columns[i][1] - 24); });
       return { p, flags, lines, height: Math.max(60, ...lines.map(l => l.length * 27 + 22)) };
     });

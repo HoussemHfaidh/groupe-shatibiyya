@@ -10,7 +10,10 @@
  }
  function active(w,now=new Date()){return !!w && now>=clock.at(w.startDate)&&now<clock.at(w.endDate);}
  function ensure(store,students,day,now=new Date()){
-  const w=week(day,now);if(store[w.id])return store;
+  const w=week(day,now);if(store[w.id]){
+   if(JSON.stringify(store[w.id].students)===JSON.stringify(students))return store;
+   return {...store,[w.id]:{...store[w.id],students:[...students]}};
+  }
   const previous=Object.values(store).find(x=>x.endDate===w.startDate);
   const assigned={};
   for(const name of students){const prior=previous?.records?.find(r=>r.student===name);if(prior)assigned[name]=prior.part===1?2:1;}

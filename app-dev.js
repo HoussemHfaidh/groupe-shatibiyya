@@ -199,7 +199,11 @@ function loadState() {
     try {
       const parsed = JSON.parse(saved);
       return {
-        students: parsed.students?.length ? parsed.students : currentDefaultStudents(),
+        students: Array.isArray(parsed.students) ? parsed.students : currentDefaultStudents(),
+        studentAliases: parsed.studentAliases || [],
+        rosterInitialized: parsed.rosterInitialized || false,
+        rosterRevision: parsed.rosterRevision || 0,
+        retiredStudents: parsed.retiredStudents || [],
         weeks: mergeWeeks(parsed.weeks?.length ? parsed.weeks : currentDefaultWeeks()),
         settings: normalizeSettings(parsed.settings),
         statuses: { ...currentDefaultStatuses(), ...(parsed.statuses || {}) },
@@ -239,6 +243,7 @@ function mergeWeeks(weeks = [], baseWeeks = currentDefaultWeeks()) {
 }
 
 function saveState() {
+  if(!jamConfigReady || rosterBusy) return;
   localStorage.setItem(currentStorageKey(), JSON.stringify(state));
   syncConfigToBackend();
 }
@@ -317,6 +322,7 @@ async function localRequest(path, options = {}) {
 
 let jamConfigReady = false;
 async function loadConfigFromBackend() {
+  const groupKey=currentStorageKey();
   try {
     let config;
     if (getFirebaseUrl()) {
@@ -324,7 +330,13 @@ async function loadConfigFromBackend() {
     } else {
       config = await localRequest("/api/config");
     }
-    if (config?.students?.length && config?.weeks?.length) {
+    if(groupKey !== currentStorageKey()) return;
+    if ((Array.isArray(config?.students) || config?.rosterInitialized) && config?.weeks?.length) {
+      config=RosterModel.config(config);
+      state.studentAliases=config.studentAliases;
+      state.rosterInitialized=true;
+      state.rosterRevision=config.rosterRevision || 0;
+      state.retiredStudents=config.retiredStudents || [];
       jamConfigReady = true;
       state.students = config.students;
       state.weeks = mergeWeeks(config.weeks);
@@ -334,7 +346,7 @@ async function loadConfigFromBackend() {
       localStorage.setItem(currentStorageKey(), JSON.stringify(state));
       render();
     } else if (getFirebaseUrl()) {
-      await syncConfigNow();
+      if(await syncConfigNow()){state.rosterInitialized=true;jamConfigReady=true;localStorage.setItem(currentStorageKey(),JSON.stringify(state));render();}
     }
     updateBackendUi("تم تحميل الإعدادات.");
   } catch (error) {
@@ -342,51 +354,73 @@ async function loadConfigFromBackend() {
   }
 }
 
-let syncTimer;
+const syncTimers = new Map(), syncChains = new Map();
 const pendingReadyAt = {};
-function syncConfigToBackend() {
-  clearTimeout(syncTimer);
-  syncTimer = setTimeout(syncConfigNow, 350);
+let rosterBusy = false;
+function configSnapshot() {
+  const readyStorageId=currentDevStorageId(), readyTimes={...(pendingReadyAt[readyStorageId] || {})};
+  return {key:currentStorageKey(), path:groupPath("config"), url:getFirebaseUrl()?firebasePath(groupPath("config")):"", readyStorageId,readyTimes,
+    config:structuredClone({
+      ...(!state.rosterInitialized ? {students:state.students,rosterInitialized:true} : {}),
+      weeks:state.weeks,settings:state.settings,statuses:state.statuses,readyOrder:state.readyOrder,
+      ...Object.fromEntries(Object.entries(readyTimes).map(([key,value])=>[`readyAt/${key}`,value]))
+    })};
 }
-
-async function syncConfigNow() {
+function syncConfigToBackend() {
+  const snapshot=configSnapshot();
+  clearTimeout(syncTimers.get(snapshot.key));
+  syncTimers.set(snapshot.key,setTimeout(()=>{syncTimers.delete(snapshot.key);syncConfigNow(snapshot);},350));
+}
+async function syncConfigNow(snapshot=configSnapshot()) {
+  const previous=syncChains.get(snapshot.key) || Promise.resolve();
+  const work=previous.catch(()=>{}).then(async()=>{
+    if(snapshot.url) {
+      const response=await fetch(snapshot.url,{method: "PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(snapshot.config)});
+      if(!response.ok) throw Error("تعذرت المزامنة مع Firebase.");
+    } else await localRequest("/api/config",{method:"PUT",body:JSON.stringify(snapshot.config)});
+    const pending=pendingReadyAt[snapshot.readyStorageId] || {};
+    Object.entries(snapshot.readyTimes).forEach(([key,value])=>{if(pending[key]===value)delete pending[key];});
+  });
+  syncChains.set(snapshot.key,work);
+  try {await work;if(snapshot.key===currentStorageKey())updateBackendUi("تم حفظ التغييرات.");return true;}
+  catch(e){if(snapshot.key===currentStorageKey())updateBackendUi(e.message);return false;}
+}
+async function editRoster(action, oldName, newName) {
+  if(rosterBusy || !jamConfigReady) return false;
+  rosterBusy=true;
+  const storage=currentStorageKey(), url=getFirebaseUrl()?firebasePath(groupPath("config")):"";
+  elements.groupSelect.disabled=true; renderStudentList();
+  [...elements.studentForm.elements].forEach(n=>n.disabled=true);
   try {
-    const readyStorageId = currentDevStorageId();
-    const readyTimes = { ...(pendingReadyAt[readyStorageId] || {}) };
-    const config = {
-      students: state.students,
-      weeks: state.weeks,
-      settings: state.settings,
-      statuses: state.statuses,
-      readyOrder: state.readyOrder,
-      ...Object.fromEntries(Object.entries(readyTimes).map(([key, value]) => [`readyAt/${key}`, value])),
-    };
-    if (getFirebaseUrl()) {
-      await firebaseRequest(groupPath("config"), {
-        method: currentGroupId === DEFAULT_GROUP_ID || isProfessorDevMode() ? "PATCH" : "PUT",
-        body: JSON.stringify(config),
-      });
-    } else {
-      await localRequest("/api/config", {
-        method: "PUT",
-        body: JSON.stringify(config),
-      });
-    }
-    const pending = pendingReadyAt[readyStorageId] || {};
-    Object.entries(readyTimes).forEach(([key, value]) => { if (pending[key] === value) delete pending[key]; });
-    updateBackendUi("تم حفظ الطلاب والأسابيع.");
-  } catch {
-    updateBackendUi(getFirebaseUrl() ? "تعذرت المزامنة مع Firebase." : "وضع محلي.");
-  }
+    if(syncTimers.has(storage)) {clearTimeout(syncTimers.get(storage));syncTimers.delete(storage);if(!await syncConfigNow())throw Error("احفظ التغييرات السابقة أولا.");}
+    await (syncChains.get(storage) || Promise.resolve());
+    let current, etag;
+    if(url){const response=await fetch(url,{cache:"no-store",headers:{"X-Firebase-ETag":"true"}});if(!response.ok)throw Error("تعذر تحميل قائمة الطلاب.");current=await response.json();etag=response.headers.get("ETag");if(!etag)throw Error("تعذر تأمين الحفظ.");}
+    else current=await localRequest("/api/config");
+    const next=RosterModel.edit(current || {},action,oldName,newName);
+    if(url){const response=await fetch(url,{method:"PUT",headers:{"Content-Type":"application/json","if-match":etag},body:JSON.stringify(next)});if(response.status===412)throw Error("تغيرت البيانات عند مستخدم آخر. أعد المحاولة.");if(!response.ok)throw Error("تعذر حفظ قائمة الطلاب. لم يتم تطبيق التغيير.");}
+    else await localRequest("/api/config",{method:"PUT",body:JSON.stringify(next)});
+    Object.assign(state,{students:next.students,studentAliases:next.studentAliases,retiredStudents:next.retiredStudents,rosterInitialized:true,rosterRevision:next.rosterRevision,statuses:next.statuses,readyOrder:next.readyOrder});
+    state.submissions=RosterModel.project(state.submissions,next.studentAliases);
+    localStorage.setItem(storage,JSON.stringify(state));
+    render();updateBackendUi("تم تحديث قائمة المجموعة في جميع الأقسام. السجل السابق محفوظ.");return true;
+  }catch(e){updateBackendUi(e.message);return false;}
+  finally{rosterBusy=false;elements.groupSelect.disabled=false;[...elements.studentForm.elements].forEach(n=>n.disabled=!jamConfigReady);renderStudentList();}
+}
+function rosterContext() {
+  const path=groupPath("config");
+  return {studentAliases:state.studentAliases || [],rosterUrl:()=>getFirebaseUrl()?firebasePath(path):""};
 }
 
 async function loadSubmissions() {
+  const groupKey=currentStorageKey();
   const weekId = elements.weekSelect.value;
   try {
     if (getFirebaseUrl()) {
       const all = (await firebaseRequest(groupPath("submissions"))) || {};
+      if(groupKey!==currentStorageKey())return;
       state.submissions = Object.entries(all)
-        .map(([id, submission]) => ({ id, ...submission }))
+        .map(([id, submission]) => ({ id, ...RosterModel.project(submission,state.studentAliases) }))
         .filter((submission) => submission.weekId === weekId)
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     } else {
@@ -450,8 +484,10 @@ function buildStudentPortalUrl() {
 }
 
 function switchGroup(groupId) {
+  if(rosterBusy) return;
   jamConfigReady = false;
   currentGroupId = normalizeGroupId(groupId);
+  const groupUrl=new URL(window.location.href);groupUrl.searchParams.set("group",currentGroupId);history.replaceState(null,"",groupUrl);
   localStorage.setItem(GROUP_KEY, currentGroupId);
   if (isProfessorDevMode()) {
     localStorage.setItem(DEV_MODE_KEY, currentDevMode);
@@ -737,7 +773,11 @@ function renderStudentList() {
     remove.title = `حذف ${student}`;
     remove.addEventListener("click", () => removeStudent(student));
 
-    chip.append(name, remove);
+    const rename=document.createElement("button"); rename.type="button";rename.textContent="تعديل";rename.setAttribute("aria-label",`تعديل الطالب ${student}`);
+    rename.onclick=()=>{const value=window.prompt(`تعديل اسم ${student} في جميع أقسام المجموعة`,student);if(value!==null)editRoster("rename",student,value);};
+    rename.disabled=remove.disabled=rosterBusy || !jamConfigReady;
+    remove.setAttribute("aria-label",`حذف الطالب ${student}`);
+    chip.append(name, rename, remove);
     elements.studentList.append(chip);
   });
 }
@@ -900,22 +940,22 @@ function render(selectedWeekId) {
   if (isProfessorDevMode() && window.Jam) {
     const storageId = currentDevStorageId();
     window.Jam.mount({
-      role: "professor", students: state.students, storageId,
+      role: "professor", ...rosterContext(), students: [...state.students], storageId,
       ready: jamConfigReady,
       schedule: window.SHATIBIYYA_JAM_SCHEDULES?.[currentGroupId],
       host: document.querySelector("main.layout"),
       firebaseUrl: () => getFirebaseUrl() ? firebasePath(`jam/groups/${storageId}`) : "",
     });
   }
-  if(isProfessorDevMode()) window.Review?.mount({role: "professor", students: state.students,
+  if(isProfessorDevMode()) window.Review?.mount({role: "professor", ...rosterContext(), students: [...state.students],
     storageId: currentDevStorageId(), ready: jamConfigReady, day: state.settings.weekBoundaryDay,
     host: document.querySelector("main.layout"), local: window.SHATIBIYYA_JAM_LOCAL_DEV,
     firebaseUrl: ((id) => () => getFirebaseUrl() ? firebasePath(`review/groups/${id}`) : "")(currentDevStorageId())});
-  if(isProfessorDevMode()) window.Khatma?.mount({role: "professor", students: state.students,
+  if(isProfessorDevMode()) window.Khatma?.mount({role: "professor", ...rosterContext(), students: [...state.students],
     storageId: currentDevStorageId(), ready: jamConfigReady, day: state.settings.weekBoundaryDay,
     host: document.querySelector("main.layout"), local: window.SHATIBIYYA_JAM_LOCAL_DEV,
     firebaseUrl: ((id) => () => getFirebaseUrl() ? firebasePath(`khatma/groups/${id}`) : "")(currentDevStorageId())});
-  if(isProfessorDevMode()) window.Attendance?.mount({role: "professor", students:state.students, ready:jamConfigReady, storageId: currentDevStorageId(), host: document.querySelector("main.layout")});
+  if(isProfessorDevMode()) window.Attendance?.mount({role: "professor", ...rosterContext(), students:[...state.students], ready:jamConfigReady, storageId: currentDevStorageId(), host: document.querySelector("main.layout")});
   sortWeeks();
   renderWeekSelect(selectedWeekId);
   renderSettings();
@@ -1169,36 +1209,12 @@ function updateWeekSettings() {
   updateBackendUi("تم حفظ إعداد الأسبوع.");
 }
 
-function addStudent(event) {
+async function addStudent(event) {
   event.preventDefault();
-  const name = elements.studentName.value.trim();
-  if (!name) return;
-  if (state.students.some((student) => normalizeArabic(student) === normalizeArabic(name))) {
-    elements.studentName.value = "";
-    return;
-  }
-  state.students.push(name);
-  elements.studentName.value = "";
-  saveState();
-  render();
+  if(await editRoster("add",null,elements.studentName.value))elements.studentName.value="";
 }
-
 function removeStudent(studentName) {
-  const confirmed = window.confirm(`هل تريد حذف ${studentName} من الجدول؟`);
-  if (!confirmed) return;
-
-  state.students = state.students.filter((student) => student !== studentName);
-  Object.keys(state.statuses).forEach((key) => {
-    if (key.startsWith(`${studentId(studentName)}__`)) {
-      delete state.statuses[key];
-    }
-  });
-  Object.keys(state.readyOrder).forEach((weekId) => {
-    state.readyOrder[weekId] = state.readyOrder[weekId].filter((student) => student !== studentName);
-  });
-
-  saveState();
-  render();
+  if(window.confirm(`هل تريد حذف ${studentName} من القوائم النشطة في جميع أقسام هذه المجموعة؟ يبقى السجل السابق محفوظا.`))editRoster("remove",studentName);
 }
 
 function addWeek(event) {
@@ -1486,7 +1502,7 @@ function resetApp() {
   const confirmed = window.confirm(`هل تريد إعادة ضبط بيانات ${currentGroup().label}؟`);
   if (!confirmed) return;
   localStorage.removeItem(currentStorageKey());
-  Object.assign(state, makeDefaultState());
+  Object.assign(state, {...makeDefaultState(),students:state.students,studentAliases:state.studentAliases,retiredStudents:state.retiredStudents,rosterInitialized:state.rosterInitialized,rosterRevision:state.rosterRevision});
   saveState();
   render();
 }

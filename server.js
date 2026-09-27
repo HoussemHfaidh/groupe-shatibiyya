@@ -68,7 +68,8 @@ async function loadStore() {
     const raw = await fs.readFile(DATA_FILE, "utf8");
     const parsed = JSON.parse(raw);
     store = {
-      students: parsed.students?.length ? parsed.students : defaultStudents,
+      students: Array.isArray(parsed.students) ? parsed.students : defaultStudents,
+      studentAliases:parsed.studentAliases || [],rosterInitialized:parsed.rosterInitialized || false,rosterRevision:parsed.rosterRevision || 0,retiredStudents:parsed.retiredStudents || [],
       weeks: mergeWeeks(parsed.weeks?.length ? parsed.weeks : defaultWeeks),
       settings: normalizeSettings(parsed.settings),
       statuses: parsed.statuses && Object.keys(parsed.statuses).length
@@ -280,6 +281,7 @@ async function handleApi(request, response, url) {
   if (request.method === "GET" && url.pathname === "/api/config") {
     sendJson(response, 200, {
       students: store.students,
+      studentAliases:store.studentAliases || [],rosterInitialized:store.rosterInitialized || false,rosterRevision:store.rosterRevision || 0,retiredStudents:store.retiredStudents || [],
       weeks: store.weeks,
       settings: store.settings,
       statuses: store.statuses,
@@ -291,13 +293,14 @@ async function handleApi(request, response, url) {
 
   if (request.method === "PUT" && url.pathname === "/api/config") {
     const body = await readBody(request);
-    if (!Array.isArray(body.students) || !Array.isArray(body.weeks)) {
+    if ((body.students !== undefined && !Array.isArray(body.students)) || !Array.isArray(body.weeks)) {
       sendJson(response, 400, { error: "الإعدادات غير صحيحة." });
       return;
     }
     store.readyAt = { ...store.readyAt, ...(body.readyAt || {}) };
     Object.entries(body).filter(([key]) => key.startsWith("readyAt/")).forEach(([key, value]) => { store.readyAt[key.slice(8)] = value; });
-    store.students = body.students.map(String).filter(Boolean);
+    if(body.students !== undefined)store.students = body.students.map(String).filter(Boolean);
+    for(const field of ["studentAliases","rosterInitialized","rosterRevision","retiredStudents"])if(body[field]!==undefined)store[field]=body[field];
     store.settings = normalizeSettings(body.settings);
     store.statuses = body.statuses && typeof body.statuses === "object"
       ? { ...buildRecoveredStatuses(), ...body.statuses }

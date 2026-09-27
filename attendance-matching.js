@@ -40,6 +40,9 @@
   }
   function resolve(name, roster = [], learned = {}) {
     const key = compact(name), names = [...new Set(roster)], remembered = Object.hasOwn(learned, key) ? learned[key] : undefined;
+    if (remembered && typeof remembered === 'object' && typeof remembered.customName === 'string' && compact(remembered.customName)) {
+      return {name:remembered.customName, method:'custom', candidates:[remembered.customName]};
+    }
     if (remembered === '') return { name:null, method:'unlisted', candidates:[] };
     if (names.includes(remembered)) return { name:remembered, method:'confirmed', candidates:[remembered] };
     const exact = names.filter(n => compact(n) === key);

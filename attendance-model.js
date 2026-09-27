@@ -72,14 +72,17 @@
     }
     return merged;
   }
-  const minutes = intervals => union(intervals).reduce((sum, [a,b]) => sum + (b-a)/60000, 0);
+  const milliseconds = intervals => union(intervals).reduce((sum, [a,b]) => sum + b-a, 0);
+  const minutes = intervals => milliseconds(intervals)/60000;
   function calculate(input, teacherName = 'Gharbi', options = {}) {
     const grouped = new Map();
     const resolutions = Object.create(null);
+    const excluded = new Set(options.excludedNames || []);
     for (const r of input) {
       const isTeacher = matching.compact(r.name) === matching.compact(teacherName);
       const resolution = isTeacher ? {name:r.name,method:'teacher'} : matching.resolve(r.name, options.students, options.aliases);
       resolutions[r.name] = resolution;
+      if (!isTeacher && excluded.has(matching.compact(r.name))) { resolutions[r.name] = {...resolution, method:'excluded'}; continue; }
       const key = isTeacher ? 'teacher' : resolution.name ? `student:${matching.compact(resolution.name)}` : `zoom:${matching.compact(r.name)}`;
       const item = grouped.get(key) || { key, name:resolution.name || r.name, matched:!!resolution.name, sourceNames:[], intervals:[], zoomMinutes:0, join:r.join, leave:r.leave, connections:0 };
       item.zoomMinutes += r.minutes; item.intervals.push([r.join,r.leave]); item.join = Math.min(item.join, r.join); item.leave = Math.max(item.leave, r.leave); item.connections++;
@@ -93,8 +96,9 @@
       p.intervals = union(p.intervals);
       // Presence only counts while the professor is connected; parallel devices count once.
       const intersections = p.intervals.flatMap(([a,b]) => teacher.intervals.map(([c,d]) => [Math.max(a,c),Math.min(b,d)]).filter(([a,b]) => b>a));
-      p.minutes = minutes(intersections);
-      return {...p, ratio:p.minutes/teacher.minutes, late:p.join-teacher.join >= 300000, low:p.minutes/teacher.minutes < .7};
+      const duration=milliseconds(intersections), reference=milliseconds(teacher.intervals);
+      p.minutes = duration/60000;
+      return {...p, ratio:duration/reference, late:p.join-teacher.join >= 300000, low:duration*10 < reference*7};
     });
     participants.sort((a, b) => a.join - b.join || a.name.localeCompare(b.name));
     return { teacher, participants, resolutions, rawRecords:input, calculationVersion:2, date: new Date(teacher.join).toISOString().slice(0, 10) };
@@ -103,9 +107,9 @@
   const displayTime = timestamp => new Date(timestamp - 2 * 3600000).toISOString().slice(11, 19);
   const displayDate = timestamp => new Date(timestamp - 2 * 3600000).toISOString().slice(0, 10);
   function migrateFlags(previous, result) {
-    const flags = {};
+    const flags = {...previous?.flags};
     for (const p of result.participants) {
-      const merged = {};
+      const merged = {...previous?.flags?.[p.key]};
       for (const old of previous?.participants || []) {
         if (old.key !== p.key && !(old.sourceNames || [old.name]).some(n => p.sourceNames.includes(n))) continue;
         for (const [key,value] of Object.entries(previous.flags?.[old.key] || {})) merged[key] = Boolean(merged[key] || value);
@@ -114,7 +118,44 @@
     }
     return flags;
   }
-  const api = { normalize, time, parseCSV, records, calculate, displayTime, displayDate, union, migrateFlags };
+  function recalculateSession(session, options = {}) {
+    const result = calculate(session.rawRecords, 'Gharbi', {...options, excludedNames:session.excludedNames || []});
+    return {...session, ...result, flags:migrateFlags(session,result)};
+  }
+  function removeParticipant(session, participantKey, options = {}) {
+    const participant = session.participants.find(p => p.key === participantKey);
+    if (!participant) throw Error('لم يتم العثور على الطالب');
+    const excludedNames = [...new Set([...(session.excludedNames || []), ...(participant.sourceNames || [participant.name]).map(matching.compact)])];
+    if (!session.rawRecords) return {...session, excludedNames, participants:session.participants.filter(p => p.key !== participantKey), removedParticipants:[...(session.removedParticipants || []), participant]};
+    return recalculateSession({...session,excludedNames},options);
+  }
+  function restoreParticipant(session, sourceKey, options = {}) {
+    if (!session.rawRecords) {
+      const participant = session.removedParticipants?.find(p => p.key === sourceKey);
+      if (!participant) throw Error('لم يتم العثور على الطالب');
+      const keys = (participant.sourceNames || [participant.name]).map(matching.compact);
+      return {...session, excludedNames:(session.excludedNames || []).filter(k=>!keys.includes(k)), participants:[...session.participants,participant].sort((a,b)=>a.join-b.join), removedParticipants:session.removedParticipants.filter(p => p.key !== sourceKey)};
+    }
+    return recalculateSession({...session, excludedNames:(session.excludedNames || []).filter(k => k !== sourceKey)},options);
+  }
+  function renameParticipant(session, participantKey, label, aliases = {}, students = []) {
+    const name = String(label).trim().replace(/\s+/g,' '), participant = session.participants.find(p => p.key === participantKey);
+    if (!participant || !matching.compact(name) || name.length > 160) throw Error('أدخل اسما صالحا (160 حرفا كحد أقصى)');
+    const nextAliases = {...aliases};
+    for (const source of participant.sourceNames || [participant.name]) nextAliases[matching.compact(source)] = {customName:name};
+    const value = session.rawRecords ? recalculateSession(session,{students,aliases:nextAliases}) : {...session,participants:session.participants.map(p => p.key === participantKey ? {...p,name,sourceNames:p.sourceNames || [p.name]} : p)};
+    return {value,aliases:nextAliases};
+  }
+  function formatPercent(ratio) {
+    const value=ratio*100;
+    for(let digits=2;digits<=6;digits++) {
+      const rounded=Number(value.toFixed(digits));
+      if((value<70 && rounded>=70) || (value<100 && rounded>=100))continue;
+      return `${rounded}%`;
+    }
+    return value<70 ? '<70%' : '<100%';
+  }
+  const api = { formatPercent, normalize, time, parseCSV, records, calculate, displayTime, displayDate, union, migrateFlags, recalculateSession, removeParticipant, restoreParticipant, renameParticipant };
   if (typeof module !== 'undefined') module.exports = api;
   else root.AttendanceModel = api;
 })(typeof window === 'undefined' ? globalThis : window);

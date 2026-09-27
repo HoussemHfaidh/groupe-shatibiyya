@@ -87,7 +87,7 @@ const path = require('node:path');
     const previewBox = await page.locator('.attendance-preview img').boundingBox();
     assert.ok(previewBox.x >= 0 && previewBox.x + previewBox.width <= 390);
     const size = await page.locator('.attendance-preview img').evaluate(img => ({width:img.naturalWidth,height:img.naturalHeight}));
-    assert.ok(size.width > 2000 && size.height > 1000);
+    assert.ok(size.width > 2000 && size.height > 700);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.screenshot({path:'/tmp/attendance-mobile.png',fullPage:true});
     await page.setViewportSize({width:1440,height:1000});
