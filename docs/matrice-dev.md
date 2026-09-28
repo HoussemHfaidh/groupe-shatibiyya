@@ -63,3 +63,14 @@ supprime. Les autres activités sont lues depuis leurs sources DEV habituelles.
   Toutes les requêtes sont interceptées : aucune donnée réelle Firebase lue/écrite.
   Saisie, clôture, suspension, rechargement, groupes isolés, largeur mobile et
   intégration/navigation dans la page professeur complète sont vérifiés.
+
+## Partage des deux tableaux
+
+Les boutons « معاينة الصورة », « تصدير PNG » et « مشاركة الجدولين » produisent
+une image unique de tous les élèves et colonnes, indépendamment du défilement.
+Elle indique le groupe, la période, la semaine de khatma concernée et si le
+résultat est provisoire ou clôturé. Les corrections professeur sont marquées
+par un astérisque ; les champs de saisie et le journal ne sont pas exportés.
+Le partage natif utilise un fichier PNG. S'il n'est pas disponible, le même PNG
+est téléchargé pour être joint manuellement à WhatsApp ou une autre application.
+Les tests couvrent le PNG, le partage natif simulé et 40 élèves hors écran.

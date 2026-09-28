@@ -1,6 +1,7 @@
 /* DEV only; snapshots and manual fields share the attendance browser's lifetime. */
 window.ProfessorMatrix = (() => {
   let ctx, panel, navButton, picker, content, notice, closeButton, refreshButton, store, sources, selected, generation=0, busy=false, validStorage=true;
+  let shareButtons=[], sharing=false, previewDialog, previewImage;
   const M=MatrixModel;
   const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
   const key=()=>`shatibiyya-matrix-v1:${ctx.storageId}`;
@@ -11,7 +12,7 @@ window.ProfessorMatrix = (() => {
     const updated=ctx && (JSON.stringify(ctx.studentAliases)!==JSON.stringify(next.studentAliases) || ctx.day!==next.day || JSON.stringify(ctx.students)!==JSON.stringify(next.students) || JSON.stringify(ctx.recitations)!==JSON.stringify(next.recitations));
     ctx=next;
     if(!panel)build();
-    if(changed){generation++;busy=false;sources=null;selected='';store={manual:{},closed:{}};validStorage=true;
+    if(changed){previewDialog?.close();generation++;busy=false;sources=null;selected='';store={manual:{},closed:{}};validStorage=true;
       try{store=JSON.parse(localStorage.getItem(key())||'{"manual":{},"closed":{}}');if(!store || typeof store!=='object' || Array.isArray(store))throw Error();}
       catch{validStorage=false;notice.textContent='تعذر قراءة حالة الطلاب المحفوظة. لم يتم تغييرها.';}
       choices();draw();if(!panel.hidden)refresh();
@@ -24,6 +25,10 @@ window.ProfessorMatrix = (() => {
     refreshButton=el('button','تحديث البيانات','secondary');refreshButton.onclick=refresh;
     closeButton=el('button','إغلاق الأسبوع وحفظ النتيجة','primary');closeButton.onclick=finalize;
     const controls=el('div',undefined,'matrix-controls');controls.append(picker,refreshButton,closeButton);
+    for(const [label,mode] of [['معاينة الصورة','preview'],['تصدير PNG','download'],['مشاركة الجدولين','share']]){
+      const button=el('button',label,'secondary');button.type='button';button.onclick=()=>exportTables(mode);controls.append(button);shareButtons.push(button);
+    }
+    previewDialog=el('dialog',undefined,'matrix-preview');const closePreview=el('button','إغلاق','secondary');closePreview.type='button';closePreview.onclick=()=>previewDialog.close();previewImage=el('img');previewImage.alt='حالة الطلاب — الجدولان كاملان';previewDialog.append(closePreview,previewImage);panel.append(previewDialog);
     notice=el('p');notice.setAttribute('aria-live','polite');content=el('div');
     panel.append(controls,notice,content,el('p','الحفظ في هذا المتصفح فقط، لكل مجموعة وبيئة DEV على حدة. للأستاذ تصحيح كل الحالات حتى بعد الإغلاق. تصحيح أسبوع سابق يعيد حساب أرصدة الأسابيع التالية. التعليق هنا حالة للمتابعة ولا يمنع تسجيل الختمة آليا.','matrix-note'));
     const nav=ctx.host.querySelector('.jam-navigation');navButton=el('button','حالة الطلاب','secondary');navButton.type='button';navButton.setAttribute('aria-pressed','false');
@@ -109,11 +114,26 @@ window.ProfessorMatrix = (() => {
       line.append(cell);
     }body.append(line);}table.append(body);wrap.append(table);content.append(wrap);
   }
+  async function exportTables(mode){
+    if(sharing||busy)return;
+    const id=ctx.storageId,date=selected,closed=store.closed?.[date],data=closed?M.reflow(store).closed[date].rows:rows();
+    const group=document.querySelector('#groupSelect')?.selectedOptions[0]?.textContent || (id.endsWith('2')?'المجموعة 2':'المجموعة 1');
+    sharing=true;shareButtons.forEach(button=>button.disabled=true);
+    try{
+      const canvas=MatrixShare.render({rows:data,week:week(),group,closed:!!closed,previous:student=>M.previousFor(store,week(),student)});
+      if(mode==='preview'){previewImage.src=canvas.toDataURL('image/png');previewDialog.showModal();return;}
+      const result=await MatrixShare.save(canvas,{share:mode==='share',filename:`student-status-${id}-${date}.png`,title:`حالة الطلاب · ${group} · ${date}`});
+      if(ctx.storageId===id && selected===date)notice.textContent=result==='shared'?'تمت مشاركة الجدولين.':'تم تنزيل صورة الجدولين كاملة. يمكنك إرسالها عبر WhatsApp أو أي تطبيق آخر.';
+    }catch(error){if(error.name!=='AbortError' && ctx.storageId===id && selected===date)notice.textContent=error.message||'تعذر تصدير الجدولين.';}
+    finally{sharing=false;draw();}
+  }
   function draw(){
     content.replaceChildren();refreshButton.disabled=busy||ctx.ready===false||!validStorage;
     const closed=store?.closed?.[selected];closeButton.disabled=true;
+    shareButtons.forEach(button=>button.disabled=sharing||busy||!selected||(!closed&&!sources));
     if(!selected || (!closed&&!sources))return;
     const data=closed?M.reflow(store).closed[selected].rows:rows();const w=week();
+    if(!data.length)shareButtons.forEach(button=>button.disabled=true);
     content.append(el('p',`${closed?'أسبوع مغلق':'معاينة · لم يغلق الأسبوع بعد'} · حالة الختمة للفترة ${w.endDate} ← ${M.addDays(w.endDate,7)}`));
     table('المخالفات الصغيرة',[['student','الاسم'],...M.small,['previous','رصيد سابق'],['total','المجموع'],['carry','الرصيد المتبقي']],data,'minor',!!closed);
     table('تعليق الختمة الفردية',[['student','الاسم'],...M.large,['previous','رصيد سابق'],['total','المجموع'],['carry','الرصيد القادم'],['status','حالة الأسبوع التالي']],data,'major',!!closed);

@@ -15,7 +15,7 @@ const path=require('node:path');
     const value=type==='jam'?{w:{startDate:w,students:['طالب'],confirmations:[{student:'طالب'}]}}:type==='review'?{[w]:{students:['طالب'],records:[{student:'طالب',complete:true}]}}:{weeks:{[w]:{students:['طالب']}},entries:{e:{student:'طالب',date:w}}};
     return route.fulfill({json:{value,revision:0}});
    }
-   if(url.pathname==='/')return route.fulfill({contentType:'text/html',body:'<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><link rel="stylesheet" href="matrix-dev.css"></head><body><main class="layout"><nav class="jam-navigation"><button>التسميع</button></nav></main><script src="weekly-clock.js"></script><script src="review-model.js"></script><script src="matrix-model.js"></script><script src="matrix-dev.js"></script></body></html>'});
+   if(url.pathname==='/')return route.fulfill({contentType:'text/html',body:'<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><link rel="stylesheet" href="matrix-dev.css"></head><body><main class="layout"><nav class="jam-navigation"><button>التسميع</button></nav></main><script src="weekly-clock.js"></script><script src="review-model.js"></script><script src="matrix-model.js"></script><script src="table-share.js"></script><script src="matrix-share.js"></script><script src="matrix-dev.js"></script></body></html>'});
    return route.fulfill({contentType:url.pathname.endsWith('.css')?'text/css':'text/javascript; charset=utf-8',body:await fs.readFile(path.join(__dirname,'..',url.pathname.slice(1)))});
   });
   await page.goto('http://matrix.test/');
@@ -48,6 +48,32 @@ const path=require('node:path');
   await page.getByText('متاح الأسبوع التالي',{exact:true}).waitFor();
   await page.getByLabel('طالب: قرار الأستاذ',{exact:true}).selectOption('auto');
   await page.getByText('معلق الأسبوع التالي',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'معاينة الصورة',exact:true}).click();
+  await page.locator('.matrix-preview[open] img').waitFor();
+  const picture=await page.locator('.matrix-preview img').getAttribute('src');
+  await fs.writeFile('/tmp/student-status-share.png',Buffer.from(picture.split(',')[1],'base64'));
+  await page.getByRole('button',{name:'إغلاق',exact:true}).click();
+  const downloadPromise=page.waitForEvent('download');
+  await page.getByRole('button',{name:'تصدير PNG',exact:true}).click();
+  const download=await downloadPromise;assert.equal(download.suggestedFilename(),'student-status-login-test-group1-2026-09-19.png');
+  await download.saveAs('/tmp/student-status-download.png');
+  assert.equal((await fs.readFile('/tmp/student-status-download.png')).subarray(1,4).toString(),'PNG');
+  await page.evaluate(()=>{
+    Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});
+    Object.defineProperty(navigator,'share',{configurable:true,value:async payload=>{window.sharedFile={name:payload.files[0].name,type:payload.files[0].type,size:payload.files[0].size};}});
+  });
+  await page.getByRole('button',{name:'مشاركة الجدولين',exact:true}).click();
+  await page.getByText('تمت مشاركة الجدولين.',{exact:true}).waitFor();
+  const shared=await page.evaluate(()=>window.sharedFile);assert.equal(shared.type,'image/png');assert.ok(shared.size>1000);
+  // Full data is rendered independently of the visible viewport and editor widgets.
+  const exported=await page.evaluate(()=>{
+    const row=JSON.parse(localStorage.getItem('shatibiyya-matrix-v1:login-test-group1')).closed['2026-09-19'].rows[0];
+    const text=[],original=CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText=function(value,...args){text.push(value);return original.call(this,value,...args);};
+    try{const image=MatrixShare.render({rows:Array.from({length:40},(_,i)=>({...row,student:'طالب '+i})),week:{startDate:'2026-09-19',endDate:'2026-09-26'},group:'المجموعة 1',closed:true,previous:()=>({})});return {width:image.width,height:image.height,text};}
+    finally{CanvasRenderingContext2D.prototype.fillText=original;}
+  });
+  assert.ok(exported.height>6000);assert.ok(exported.text.includes('طالب 39'));assert.ok(exported.text.some(x=>x.includes('×')));assert.ok(!exported.text.includes('قرار الأستاذ'));
   await page.screenshot({path:'/tmp/matrix-dev-desktop.png',fullPage:true});
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
