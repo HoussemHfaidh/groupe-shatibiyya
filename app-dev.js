@@ -956,6 +956,11 @@ function render(selectedWeekId) {
     host: document.querySelector("main.layout"), local: window.SHATIBIYYA_JAM_LOCAL_DEV,
     firebaseUrl: ((id) => () => getFirebaseUrl() ? firebasePath(`khatma/groups/${id}`) : "")(currentDevStorageId())});
   if(isProfessorDevMode()) window.Attendance?.mount({role: "professor", ...rosterContext(), students:[...state.students], ready:jamConfigReady, storageId: currentDevStorageId(), host: document.querySelector("main.layout")});
+  if(isProfessorDevMode()) window.ProfessorMatrix?.mount({role:'professor', ...rosterContext(), students:[...state.students],
+    storageId:currentDevStorageId(), ready:jamConfigReady, day:state.settings.weekBoundaryDay,
+    host:document.querySelector('main.layout'), local:window.SHATIBIYYA_JAM_LOCAL_DEV,
+    recitations:state.weeks.map(w=>({...w,statuses:Object.fromEntries(state.students.map(name=>[name,getStatus(name,w.id)]))})),
+    sourceUrl:((id)=>type=>getFirebaseUrl()?firebasePath(`${type}/groups/${id}`):'')(currentDevStorageId())});
   sortWeeks();
   renderWeekSelect(selectedWeekId);
   renderSettings();
