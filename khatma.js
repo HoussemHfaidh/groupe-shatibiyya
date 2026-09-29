@@ -172,7 +172,12 @@ window.Khatma = (() => {
     headers.forEach(label => { const th = el('th', label); th.scope = 'col'; row.append(th); });
     head.append(row); t.append(head, body); wrap.append(t); report.append(wrap); return body;
   }
-  const entryLabel = e => `${data.khatmas[e.khatmaId]?.title || 'ختمة'} · ${e.riwaya || ''} · ${e.teacher || ''} — ${e.position || KhatmaModel.attendance[e.attendance]}`;
+  const entryLabel = e => {
+    const title = (data.khatmas[e.khatmaId]?.title || '').trim();
+    const reading = (e.riwaya || '').trim();
+    const parts = [title && title !== reading ? title : '', reading, e.teacher].filter(Boolean);
+    return `${parts.join(' · ') || 'ختمة'} — ${e.position || KhatmaModel.attendance[e.attendance]}`;
+  };
   function drawReport() {
     report.replaceChildren();
     if (!loaded) { report.append(el('p', 'ستظهر البيانات بعد تحميل الختمات.')); return; }
