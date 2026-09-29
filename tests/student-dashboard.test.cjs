@@ -10,3 +10,9 @@ test('confirming a peer does not mark your own review done and explains the diff
  const value=data();value.review['2026-09-26'].records=[{student:'علي',validator:'أحمد',complete:true}];
  const card=M.summary(value,now).cards[2];assert.equal(card.state,'todo');assert.match(card.detail,/أكدت مراجعة زميلك/);
 });
+test('a second peer confirmation visibly increments the count without approving your own reading',()=>{
+ const value=data();value.review['2026-09-26'].records=[{student:'علي',validator:'أحمد',complete:true}];
+ assert.equal(M.summary(value,now).cards[2].peerConfirmations,1);
+ value.review['2026-09-26'].records.push({student:'عمر',validator:'أحمد',complete:true});
+ const card=M.summary(value,now).cards[2];assert.equal(card.peerConfirmations,2);assert.equal(card.state,'todo');
+});

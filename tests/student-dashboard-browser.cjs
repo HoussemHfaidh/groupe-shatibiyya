@@ -38,6 +38,19 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await page.locator('.dashboard-card[data-activity=review]').waitFor();
   assert.equal(await page.locator('#submissionForm').isVisible(),false);
   assert.match(await page.locator('.student-dashboard').innerText(),/أسبوع جديد/);
+  const prof=await context.newPage();prof.on('pageerror',e=>errors.push(e.message));
+  await prof.clock.install({time:new Date('2026-09-29T12:00:00Z')});
+  await prof.goto('http://localhost/student-login-dev.html');
+  await prof.evaluate(async ({storage,group})=>{
+    StudentDashboard.logout();Review.logout();Jam.logout();Khatma.logout();
+    document.body.innerHTML='<main><div class="jam-professor-navigation"><nav class="jam-navigation"><button>التسميع</button></nav></div></main>';
+    await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='table-share.js';s.onload=resolve;s.onerror=reject;document.head.append(s);});
+    // A fresh review module provides the real professor table and editing dialogs.
+    for(const src of ['review-dev.js','activity-live-dev.js'])await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=reject;document.head.append(s);});
+    Review.mount({role:'professor',students:['أحمد','علي'],storageId:storage,ready:true,day:group==='group1'?6:0,host:document.querySelector('main'),firebaseUrl:()=>`https://groupe-shatibiyya-default-rtdb.asia-southeast1.firebasedatabase.app/review/groups/${storage}.json`});
+  },{storage,group});
+  await prof.getByRole('button',{name:'المراجعة',exact:true}).click();
+  await prof.locator('.review-cell-button').first().waitFor();
   await page.locator('.dashboard-card[data-activity=review]').click();
   const reviewPanel=page.locator('.review-panel');
   await reviewPanel.getByLabel('الطالب الذي قرأ عليّ').selectOption('علي');
@@ -45,9 +58,28 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await reviewPanel.getByLabel('المدة بالدقائق').fill('5');await reviewPanel.getByLabel('عدد الأخطاء').fill('0');
   await reviewPanel.getByRole('button',{name:'تأكيد مراجعة زميلي'}).click();
   await page.getByRole('button',{name:'نعم، إلى النهاية',exact:true}).click();
-  await reviewPanel.getByText('لا يوجد زميل متاح حاليا.',{exact:true}).waitFor();
+  await page.waitForFunction(()=>document.querySelector('.review-panel form select').options.length===0);
   await page.getByRole('button',{name:'أسبوعي',exact:true}).click();
   await page.getByText('أكدت مراجعة زميلك؛ مراجعتك أنت تنتظر تأكيد زميلك',{exact:true}).waitFor();
+  await page.getByText('تأكيداتي لزملائي هذا الأسبوع: 1',{exact:true}).waitFor();
+  await prof.evaluate(()=>signalActivity('/review/'));await prof.clock.runFor(400);
+  await prof.waitForFunction(()=>[...document.querySelectorAll('.review-cell-button')].some(b=>b.getAttribute('aria-label').startsWith('علي ·')&&b.textContent==='X'));
+  const ownCell=prof.locator('.review-cell-button').filter({hasText:'—'}).first();
+  await ownCell.click();await prof.getByRole('button',{name:'القسم الثاني مكتمل — أخضر',exact:true}).click();
+  await prof.locator('[name=durationMinutes]').fill('5');await prof.locator('[name=errorCount]').fill('0');await prof.getByRole('button',{name:'حفظ',exact:true}).click();
+  await prof.waitForFunction(()=>[...document.querySelectorAll('.review-cell-button')].some(b=>b.getAttribute('aria-label').startsWith('أحمد ·')&&b.textContent==='X'));
+  await page.evaluate(()=>signalActivity('/review/'));await page.clock.runFor(400);
+  await page.locator('.dashboard-card[data-activity=review].dashboard-done').waitFor();
+  await prof.locator('.review-cell-button').filter({hasText:'X'}).first().click();await prof.getByRole('button',{name:'مسح النتيجة',exact:true}).click();
+  await prof.waitForFunction(()=>[...document.querySelectorAll('.review-cell-button')].some(b=>b.getAttribute('aria-label').startsWith('أحمد ·')&&b.textContent==='—'));
+  await page.evaluate(()=>signalActivity('/review/'));await page.clock.runFor(400);
+  await page.waitForFunction(()=>document.querySelector('.dashboard-card[data-activity=review] .dashboard-badge').textContent.includes('لم يكتمل'));
+  await prof.close();
+
+  stores[reviewPath][date].records.push({student:'عمر',validator:'أحمد',complete:true});
+  await page.evaluate(()=>signalActivity('/review/'));await page.clock.runFor(400);
+  await page.getByText('تأكيداتي لزملائي هذا الأسبوع: 2',{exact:true}).waitFor();
+  assert.match(await page.locator('.dashboard-card[data-activity=review] .dashboard-badge').innerText(),/مراجعتي:.*لم يكتمل/);
   assert.ok((stores[reviewPath][date].records||[]).some(r=>r.student==='علي'&&r.validator==='أحمد'));
   stores[configPath].statuses['احمد__w']='done';stores[reviewPath][date].records=[{student:'أحمد',complete:false}];stores[jamPath]['week-'+date].confirmations.push({student:'أحمد',verseIndex:1});stores[khatmaPath]={entries:{e:{student:'أحمد',date,attendance:'present'}}};
   await page.evaluate(()=>signalActivity('/review/'));await page.clock.runFor(400);
