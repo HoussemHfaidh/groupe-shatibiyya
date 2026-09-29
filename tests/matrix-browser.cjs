@@ -105,8 +105,10 @@ const production=process.env.TEST_PRODUCTION==='1';
   await integrated.getByLabel('أسبوع حالة الطلاب').selectOption(w);
   const recital=integrated.getByLabel('طالب: عدم تسميع الأبيات',{exact:true});
   assert.equal(await recital.inputValue(),'1');
+  await integrated.evaluate(()=>{window.loadingFlashes=0;new MutationObserver(()=>{if(document.querySelector('.matrix-panel [aria-live]')?.textContent==='جار تحميل البيانات...')window.loadingFlashes++;}).observe(document.querySelector('.matrix-panel'),{subtree:true,childList:true,characterData:true});});
   liveRecitation='done';await integrated.evaluate(()=>signalMatrix());
   await integrated.waitForFunction(()=>document.querySelector('input[aria-label="طالب: عدم تسميع الأبيات"]')?.value==='0');
+  if(production)assert.equal(await integrated.evaluate(()=>loadingFlashes),0,'background refresh must keep the table visible');
   await recital.fill('2');await recital.press('Tab');
   if(production){for(let i=0;i<100&&!remoteMatrix?.overrides?.[w];i++)await integrated.waitForTimeout(20);assert.ok(remoteMatrix?.overrides?.[w]);}
   liveRecitation='missed';await integrated.evaluate(()=>signalMatrix());await integrated.waitForTimeout(600);

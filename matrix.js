@@ -2,7 +2,7 @@
 window.ProfessorMatrix = (() => {
   let ctx, panel, navButton, picker, content, notice, closeButton, refreshButton, store, sources, selected, generation=0, busy=false, validStorage=true;
   let shareButtons=[], sharing=false, previewDialog, previewImage;
-  let liveWatch, pendingLive=false;
+  let liveWatch, pendingLive=false, mountSignature;
   const M=MatrixModel;
   const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
   const key=()=>`shatibiyya-matrix-v1:${ctx.storageId}`;
@@ -10,14 +10,17 @@ window.ProfessorMatrix = (() => {
     if(next.role!=='professor'||!/^group[12]$/.test(next.storageId))return;
     const becameReady=ctx?.ready===false && next.ready!==false;
     const changed=ctx?.storageId!==next.storageId;
-    const updated=ctx && (JSON.stringify(ctx.studentAliases)!==JSON.stringify(next.studentAliases) || ctx.day!==next.day || JSON.stringify(ctx.students)!==JSON.stringify(next.students) || JSON.stringify(ctx.recitations)!==JSON.stringify(next.recitations));
+    const signature=JSON.stringify([next.studentAliases,next.day,next.students,next.recitations]);
+    const updated=mountSignature!==signature;mountSignature=signature;
     ctx=next;
     if(!panel)build();
     if(changed){liveWatch?.stop();liveWatch=null;previewDialog?.close();generation++;busy=false;sources=null;selected='';store={manual:{},closed:{}};validStorage=true;
       try{store={manual:{},closed:{}};}
       catch{validStorage=false;notice.textContent='تعذر قراءة حالة الطلاب المحفوظة. لم يتم تغييرها.';}
       choices();draw();if(!panel.hidden){refresh();startLive();}
-    } else if(updated || becameReady){generation++;busy=false;sources=null;choices();draw();if(!panel.hidden){refresh();startLive();}}
+    } else if(updated || becameReady){
+      if(!panel.hidden){startLive();liveWatch?.refresh();}else sources=null;
+    }
   }
   function build(){
     panel=el('section',undefined,'panel matrix-panel');panel.hidden=true;
@@ -68,7 +71,7 @@ window.ProfessorMatrix = (() => {
     liveWatch?.refresh();
   });
   async function refresh(silent=false){
-    silent=silent===true;
+    silent=silent===true && !!sources;
     if(busy||ctx.ready===false||!validStorage)return;
     const c=ctx,token=++generation;busy=true;if(!silent){sources=null;draw();notice.textContent='جار تحميل البيانات...';}
     try{
