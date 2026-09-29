@@ -2,6 +2,7 @@
 window.ProfessorMatrix = (() => {
   let ctx, panel, navButton, picker, content, notice, closeButton, refreshButton, store, sources, selected, generation=0, busy=false, validStorage=true;
   let shareButtons=[], sharing=false, previewDialog, previewImage;
+  let liveWatch, pendingLive=false;
   const M=MatrixModel;
   const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
   const key=()=>`shatibiyya-matrix-v1:${ctx.storageId}`;
@@ -12,11 +13,11 @@ window.ProfessorMatrix = (() => {
     const updated=ctx && (JSON.stringify(ctx.studentAliases)!==JSON.stringify(next.studentAliases) || ctx.day!==next.day || JSON.stringify(ctx.students)!==JSON.stringify(next.students) || JSON.stringify(ctx.recitations)!==JSON.stringify(next.recitations));
     ctx=next;
     if(!panel)build();
-    if(changed){previewDialog?.close();generation++;busy=false;sources=null;selected='';store={manual:{},closed:{}};validStorage=true;
+    if(changed){liveWatch?.stop();liveWatch=null;previewDialog?.close();generation++;busy=false;sources=null;selected='';store={manual:{},closed:{}};validStorage=true;
       try{store=JSON.parse(localStorage.getItem(key())||'{"manual":{},"closed":{}}');if(!store || typeof store!=='object' || Array.isArray(store))throw Error();}
       catch{validStorage=false;notice.textContent='تعذر قراءة حالة الطلاب المحفوظة. لم يتم تغييرها.';}
-      choices();draw();if(!panel.hidden)refresh();
-    } else if(updated || becameReady){generation++;busy=false;sources=null;choices();draw();if(!panel.hidden)refresh();}
+      choices();draw();if(!panel.hidden){refresh();startLive();}
+    } else if(updated || becameReady){generation++;busy=false;sources=null;choices();draw();if(!panel.hidden){refresh();startLive();}}
   }
   function build(){
     panel=el('section',undefined,'panel matrix-panel');panel.hidden=true;
@@ -32,8 +33,8 @@ window.ProfessorMatrix = (() => {
     notice=el('p');notice.setAttribute('aria-live','polite');content=el('div');
     panel.append(controls,notice,content,el('p','الحفظ في هذا المتصفح فقط، لكل مجموعة وبيئة DEV على حدة. للأستاذ تصحيح كل الحالات حتى بعد الإغلاق. تصحيح أسبوع سابق يعيد حساب أرصدة الأسابيع التالية. التعليق هنا حالة للمتابعة ولا يمنع تسجيل الختمة آليا.','matrix-note'));
     const nav=ctx.host.querySelector('.jam-navigation');navButton=el('button','حالة الطلاب','secondary');navButton.type='button';navButton.setAttribute('aria-pressed','false');
-    navButton.onclick=()=>{nav.querySelector('button').click();[...ctx.host.children].filter(n=>n!==panel&&!n.contains(nav)).forEach(n=>n.hidden=true);document.querySelectorAll('#exportImageBtn,#resetBtn').forEach(n=>n.hidden=true);panel.hidden=false;[...nav.children].forEach(n=>n.setAttribute('aria-pressed',String(n===navButton)));refresh();};
-    nav.addEventListener('click',e=>{if(e.target!==navButton){panel.hidden=true;navButton.setAttribute('aria-pressed','false');}});
+    navButton.onclick=()=>{nav.querySelector('button').click();[...ctx.host.children].filter(n=>n!==panel&&!n.contains(nav)).forEach(n=>n.hidden=true);document.querySelectorAll('#exportImageBtn,#resetBtn').forEach(n=>n.hidden=true);panel.hidden=false;[...nav.children].forEach(n=>n.setAttribute('aria-pressed',String(n===navButton)));refresh();startLive();};
+    nav.addEventListener('click',e=>{if(e.target!==navButton){liveWatch?.stop();liveWatch=null;panel.hidden=true;navButton.setAttribute('aria-pressed','false');}});
     nav.append(navButton);ctx.host.append(panel);
   }
   function normalizeNames(){
@@ -51,21 +52,43 @@ window.ProfessorMatrix = (() => {
     picker.replaceChildren();[...dates].filter(d=>d<=current.startDate).sort().reverse().forEach(d=>picker.add(new Option(`${d} ← ${M.addDays(d,7)}${store.closed?.[d]?' · مغلق':''}`,d)));
     if(!dates.has(selected))selected=current.startDate;picker.value=selected;
   }
-  async function refresh(){
+  function editing(){return panel.contains(document.activeElement)&&document.activeElement.matches('input,select');}
+  function startLive(){
+    if(liveWatch || !window.LiveData)return;
+    liveWatch=LiveData.watch({urls:()=>[ctx.rosterUrl?.(),...(!ctx.local?['jam','review','khatma'].map(type=>ctx.sourceUrl(type)):[])],change:()=>{
+      if(panel.hidden)return;
+      if(editing()){pendingLive=true;return;}
+      return refresh(true);
+    }});
+  }
+  document.addEventListener('focusout',()=>{if(pendingLive)setTimeout(()=>{if(!editing()){pendingLive=false;liveWatch?.refresh();}},0);});
+  window.addEventListener('storage',event=>{
+    if(!ctx || ![key(),`shatibiyya-attendance-v1:${ctx.storageId}`].includes(event.key))return;
+    if(event.key===key()){try{store=JSON.parse(event.newValue||'{"manual":{},"closed":{}}');}catch{return;}}
+    liveWatch?.refresh();
+  });
+  async function refresh(silent=false){
+    silent=silent===true;
     if(busy||ctx.ready===false||!validStorage)return;
-    const c=ctx,token=++generation;busy=true;sources=null;draw();notice.textContent='جار تحميل البيانات...';
+    const c=ctx,token=++generation;busy=true;if(!silent){sources=null;draw();notice.textContent='جار تحميل البيانات...';}
     try{
-      const values=await Promise.all(['jam','review','khatma'].map(async type=>{
-        const url=c.local?'':c.sourceUrl(type);const r=await fetch(url||`/api/${type}/${encodeURIComponent(c.storageId)}`,{cache:'no-store'});
-        if(!r.ok)throw Error('تعذر تحميل '+type+'؛ لا يمكن حساب النتيجة.');const body=await r.json();const value=url?(body||{}):(body.value||{});return window.Roster?.project(value,c)||value;
+      const values=await Promise.all(['jam','review','khatma',...(c.rosterUrl?['config']:[])].map(async type=>{
+        const url=type==='config'?c.rosterUrl():c.local?'':c.sourceUrl(type);const r=await fetch(url||(type==='config'?'/api/config':`/api/${type}/${encodeURIComponent(c.storageId)}`),{cache:'no-store',signal:AbortSignal.timeout(15000)});
+        if(!r.ok)throw Error('تعذر تحميل '+type+'؛ لا يمكن حساب النتيجة.');const body=await r.json();const value=url||type==='config'?(body||{}):(body.value||{});return window.Roster?.project(value,c)||value;
       }));
+      if(token!==generation)return;
+      if(values[3]){
+        const config=RosterModel.config(values[3]);c.students=config.students;c.studentAliases=config.studentAliases;c.day=config.settings?.weekBoundaryDay??c.day;
+        c.recitations=(config.weeks||[]).map(w=>({...w,statuses:Object.fromEntries(c.students.map(name=>[name,config.statuses?.[`${RosterModel.normalize(name).replace(/\s+/g,'-')}__${w.id}`]||'']))}));
+        for(let i=0;i<3;i++)values[i]=RosterModel.project(values[i],c.studentAliases);
+      }
       const attendance=JSON.parse(localStorage.getItem(`shatibiyya-attendance-v1:${c.storageId}`)||'[]');
       if(token!==generation)return;
       const sessions=(Array.isArray(attendance)?attendance:attendance.sessions||[]).map(session=>({...session,participants:(session.participants||[]).map(p=>({...p,name:window.RosterModel?.resolve(p.name,c.studentAliases)||p.name}))}));
       sources={jam:values[0],review:values[1],khatma:values[2],attendance:sessions,students:[...c.students],recitations:c.recitations};
-      choices();notice.textContent='تم تحميل البيانات. اضغط × لإضافة مخالفة أو إلغائها، أو عدّل العدد. زر ↺ يلغي تصحيح الأستاذ ويعيد القيمة التلقائية. الرمز — يعني بيانات ناقصة؛ يمكن للأستاذ استكمالها يدويا.';
+      choices();if(!silent)notice.textContent='تم تحميل البيانات. اضغط × لإضافة مخالفة أو إلغائها، أو عدّل العدد. زر ↺ يلغي تصحيح الأستاذ ويعيد القيمة التلقائية. الرمز — يعني بيانات ناقصة؛ يمكن للأستاذ استكمالها يدويا.';
     }catch(e){if(token===generation)notice.textContent=e.message;}
-    finally{if(token===generation){busy=false;draw();}}
+    finally{if(token===generation){busy=false;if(silent&&editing())pendingLive=true;else draw();}}
   }
   function week(){return {startDate:selected,endDate:M.addDays(selected,7)};}
   function rows(){const w=week();return ctx.students.map(student=>M.applyOverrides(M.sourceRow(student,w,sources,store.manual?.[selected]?.[student]),store.overrides?.[selected]?.[student],M.previousFor(store,w,student)));}

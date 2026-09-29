@@ -210,6 +210,7 @@ function clearAuthSession() {
   window.Jam?.logout();
   window.Review?.logout();
   window.Khatma?.logout();
+  window.StudentDashboard?.logout();
   currentAuthSession = null;
   currentUserProfile = null;
   localStorage.removeItem(AUTH_SESSION_KEY);
@@ -408,7 +409,10 @@ async function localRequest(path, options = {}) {
 }
 
 async function loadConfig() {
+  const profile=currentUserProfile,storage=currentTestGroupStorageId();
+  if(!profile)return;
   try {
+    const activeSection=elements.studentPanel.querySelector('.jam-navigation [aria-pressed="true"]')?.textContent;
     const previousWeek = elements.weekSelect.value;
     const previousValidator = elements.validatorSelect.value;
     const previousStudent = elements.studentSelect.value;
@@ -437,10 +441,11 @@ async function loadConfig() {
       throw new Error("الإعدادات غير موجودة.");
     }
 
+    if(profile!==currentUserProfile || storage!==currentTestGroupStorageId())return;
     config=RosterModel.config(config);
     if(currentUserProfile){currentUserProfile.studentName=RosterModel.resolve(currentUserProfile.studentName,config.studentAliases);elements.accountName.textContent=`${currentUserProfile.studentName} - ${groupLabel(currentGroupId)}`;}
     if(!config.students.includes(currentUserProfile?.studentName)) {
-      window.Jam?.logout();window.Review?.logout();window.Khatma?.logout();
+      window.Jam?.logout();window.Review?.logout();window.Khatma?.logout();window.StudentDashboard?.logout();
       currentConfig=config;
       elements.studentSelect.replaceChildren();elements.validatorSelect.replaceChildren();
       elements.studentPanel.querySelectorAll(".jam-navigation button, #submissionForm button").forEach(n=>n.disabled=true);
@@ -471,6 +476,16 @@ async function loadConfig() {
       day: config.settings?.weekBoundaryDay ?? (currentGroupId === "group2" ? 0 : 6),
       local: window.SHATIBIYYA_JAM_LOCAL_DEV, prepare: ensureFreshAuthSession,
       firebaseUrl: ((id) => () => getFirebaseUrl() ? firebasePath(`khatma/groups/${id}`) : "")(currentTestGroupStorageId())});
+    window.StudentDashboard?.mount({name:currentUserProfile.studentName,students:config.students,
+      storageId:currentTestGroupStorageId(),groupLabel:groupLabel(currentGroupId),host:elements.studentPanel,
+      day:config.settings?.weekBoundaryDay ?? (currentGroupId==='group2'?0:6),jamEnabled:currentGroupId==='group1',
+      local:window.SHATIBIYYA_JAM_LOCAL_DEV,prepare:ensureFreshAuthSession,
+      url:((id,path)=>type=>getFirebaseUrl()?firebasePath(type==='config'?path:`${type}/groups/${id}`):'')(currentTestGroupStorageId(),groupPath('config'))});
+    if(activeSection && activeSection!=='أسبوعي'){
+      const navigation=elements.studentPanel.querySelector('.jam-navigation');
+      const active=[...navigation.children].find(button=>button.textContent===activeSection);
+      if(active && !active.hidden && navigation.querySelector('button[aria-pressed="true"]')!==active)active.click();
+    }
     renderWeeks(config, previousWeek);
     renderWeekState(previousValidator, previousStudent);
     elements.result.textContent = "البوابة جاهزة.";

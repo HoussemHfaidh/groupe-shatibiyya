@@ -82,13 +82,15 @@ const path=require('node:path');
   await page.getByText('تم تحميل البيانات.',{exact:false}).waitFor();assert.equal(await page.getByText('معلق الأسبوع التالي',{exact:true}).count(),0);
   assert.equal(await page.evaluate(()=>localStorage.getItem('shatibiyya-matrix-v1:login-test-group2')),null);
   assert.deepEqual(errors,[]);
+  let liveRecitation='';
   const integrated=await browser.newPage({viewport:{width:1440,height:1000}});
+  await integrated.addInitScript(()=>{window.streams=[];window.EventSource=class{constructor(url){this.url=url;this.events={};window.streams.push(this);}addEventListener(type,fn){this.events[type]=fn;}close(){this.closed=true;}};window.signalMatrix=()=>streams.filter(s=>!s.closed).forEach(s=>s.events.patch?.({data:'{}'}));});
   integrated.on('pageerror',e=>errors.push(e.message));
   await integrated.route('**/*',async route=>{
    const url=new URL(route.request().url());
    if(url.hostname.endsWith('firebasedatabase.app')){
     assert.match(url.pathname,/login-(test|sandbox)/);
-    const value=url.pathname.startsWith('/config')?{students:['طالب'],weeks:[{id:'matrix-w',date:w,start:1,end:10}],settings:{weekBoundaryDay:url.pathname.includes('group2')?0:6},statuses:{}}:{};
+    const value=url.pathname.startsWith('/config')?{students:['طالب'],weeks:[{id:'matrix-w',date:w,start:1,end:10}],settings:{weekBoundaryDay:url.pathname.includes('group2')?0:6},statuses:{'طالب__matrix-w':liveRecitation}}:{};
     return route.fulfill({json:value,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-expose-headers':'ETag',ETag:'"0"'}});
    }
    if(url.hostname!=='matrix.test')return route.fulfill({body:''});
@@ -98,6 +100,14 @@ const path=require('node:path');
   await integrated.goto('http://matrix.test/prof-login-dev.html?devMode=data');
   await integrated.getByRole('button',{name:'حالة الطلاب',exact:true}).click();
   await integrated.getByText('تم تحميل البيانات.',{exact:false}).waitFor();
+  await integrated.getByLabel('أسبوع حالة الطلاب').selectOption(w);
+  const recital=integrated.getByLabel('طالب: عدم تسميع الأبيات',{exact:true});
+  assert.equal(await recital.inputValue(),'1');
+  liveRecitation='done';await integrated.evaluate(()=>signalMatrix());
+  await integrated.waitForFunction(()=>document.querySelector('input[aria-label="طالب: عدم تسميع الأبيات"]')?.value==='0');
+  await recital.fill('2');await recital.press('Tab');
+  liveRecitation='missed';await integrated.evaluate(()=>signalMatrix());await integrated.waitForTimeout(600);
+  assert.equal(await recital.inputValue(),'2');
   await integrated.locator('#groupSelect').selectOption('group2');
   await integrated.getByText('تم تحميل البيانات.',{exact:false}).waitFor();
   assert.equal(await integrated.locator('.matrix-panel').isVisible(),true);
