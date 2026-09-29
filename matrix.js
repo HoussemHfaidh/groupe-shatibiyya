@@ -14,10 +14,10 @@ window.ProfessorMatrix = (() => {
     const updated=mountSignature!==signature;mountSignature=signature;
     ctx=next;
     if(!panel)build();
-    if(changed){liveWatch?.stop();liveWatch=null;previewDialog?.close();generation++;busy=false;sources=null;selected='';store={manual:{},closed:{}};validStorage=true;
+    if(changed){liveWatch?.stop();liveWatch=null;previewDialog?.close();generation++;busy=false;sources=null;selected='';store={manual:{},closed:{}};validStorage=true;notice.textContent='';
       try{store={manual:{},closed:{}};}
       catch{validStorage=false;notice.textContent='تعذر قراءة حالة الطلاب المحفوظة. لم يتم تغييرها.';}
-      choices();draw();if(!panel.hidden){refresh();startLive();}
+      choices();draw();if(!panel.hidden){refresh(true);startLive();}
     } else if(updated || becameReady){
       if(!panel.hidden){startLive();liveWatch?.refresh();}else sources=null;
     }
@@ -36,7 +36,7 @@ window.ProfessorMatrix = (() => {
     notice=el('p');notice.setAttribute('aria-live','polite');content=el('div');
     panel.append(controls,notice,content,el('p','الحالات والتصحيحات محفوظة في Firebase ومتزامنة بين أجهزة الأستاذ لكل مجموعة. للأستاذ تصحيح كل الحالات حتى بعد الإغلاق. تصحيح أسبوع سابق يعيد حساب أرصدة الأسابيع التالية. التعليق هنا حالة للمتابعة ولا يمنع تسجيل الختمة آليا.','matrix-note'));
     const nav=ctx.host.querySelector('.jam-navigation');navButton=el('button','حالة الطلاب','secondary');navButton.type='button';navButton.setAttribute('aria-pressed','false');
-    navButton.onclick=()=>{nav.querySelector('button').click();[...ctx.host.children].filter(n=>n!==panel&&!n.contains(nav)).forEach(n=>n.hidden=true);document.querySelectorAll('#exportImageBtn,#resetBtn').forEach(n=>n.hidden=true);panel.hidden=false;[...nav.children].forEach(n=>n.setAttribute('aria-pressed',String(n===navButton)));refresh();startLive();};
+    navButton.onclick=event=>{nav.querySelector('button').click();[...ctx.host.children].filter(n=>n!==panel&&!n.contains(nav)).forEach(n=>n.hidden=true);document.querySelectorAll('#exportImageBtn,#resetBtn').forEach(n=>n.hidden=true);panel.hidden=false;[...nav.children].forEach(n=>n.setAttribute('aria-pressed',String(n===navButton)));refresh(!event?.isTrusted);startLive();};
     nav.addEventListener('click',e=>{if(e.target!==navButton){liveWatch?.stop();liveWatch=null;panel.hidden=true;navButton.setAttribute('aria-pressed','false');}});
     nav.append(navButton);ctx.host.append(panel);
   }
@@ -71,9 +71,9 @@ window.ProfessorMatrix = (() => {
     liveWatch?.refresh();
   });
   async function refresh(silent=false){
-    silent=silent===true && !!sources;
+    silent=silent===true;
     if(busy||ctx.ready===false||!validStorage)return;
-    const c=ctx,token=++generation;busy=true;if(!silent){sources=null;draw();notice.textContent='جار تحميل البيانات...';}
+    const c=ctx,token=++generation;busy=true;if(!silent){draw();notice.textContent='جار تحميل البيانات...';}
     try{
       const values=await Promise.all(['jam','review','khatma',...(c.rosterUrl?['config']:[])].map(async type=>{
         const url=type==='config'?c.rosterUrl():c.local?'':c.sourceUrl(type);const r=await fetch(url||(type==='config'?'/api/config':`/api/${type}/${encodeURIComponent(c.storageId)}`),{cache:'no-store',signal:AbortSignal.timeout(15000)});
@@ -98,7 +98,7 @@ window.ProfessorMatrix = (() => {
       if(token!==generation)return;
       const sessions=(Array.isArray(attendance)?attendance:attendance.sessions||[]).map(session=>({...session,participants:(session.participants||[]).map(p=>({...p,name:window.RosterModel?.resolve(p.name,c.studentAliases)||p.name}))}));
       sources={jam:values[0],review:values[1],khatma:values[2],attendance:sessions,students:[...c.students],recitations:c.recitations};
-      choices();if(!silent)notice.textContent='تم تحميل البيانات. اضغط × لإضافة مخالفة أو إلغائها، أو عدّل العدد. زر ↺ يلغي تصحيح الأستاذ ويعيد القيمة التلقائية. الرمز — يعني بيانات ناقصة؛ يمكن للأستاذ استكمالها يدويا.';
+      choices();if(!silent || !notice.textContent || notice.textContent==='جار تحميل البيانات...')notice.textContent='تم تحميل البيانات. اضغط × لإضافة مخالفة أو إلغائها، أو عدّل العدد. زر ↺ يلغي تصحيح الأستاذ ويعيد القيمة التلقائية. الرمز — يعني بيانات ناقصة؛ يمكن للأستاذ استكمالها يدويا.';
     }catch(e){if(token===generation)notice.textContent=e.message;}
     finally{if(token===generation){busy=false;if(silent&&editing())pendingLive=true;else draw();}}
   }
