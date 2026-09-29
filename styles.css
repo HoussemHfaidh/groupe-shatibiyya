@@ -267,16 +267,26 @@ textarea {
   font-size: 13px;
 }
 
+/* Text actions need their own width; only the delete icon stays circular. */
 .student-chip button {
   background: #e5ebf6;
   border-radius: 999px;
   color: #54627a;
-  font-size: 16px;
-  height: 24px;
-  line-height: 1;
-  min-height: 24px;
+  flex: 0 0 auto;
+  font-size: 13px;
+  height: 28px;
+  line-height: 1.3;
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0 10px;
+  white-space: nowrap;
+  width: auto;
+}
+
+.student-chip button:last-child {
+  font-size: 18px;
   padding: 0;
-  width: 24px;
+  width: 28px;
 }
 
 .result-box {
