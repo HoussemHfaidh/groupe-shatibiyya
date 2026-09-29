@@ -50,3 +50,28 @@ des instantanés, hors correction explicite du professeur.
 Tests : modèles (26 tests), règles métier (12), recettes navigateur dashboard
 et matrice avec Firebase et événements temps réel simulés. Aucun message envoyé
 et aucune donnée réelle modifiée par les tests.
+
+## Données réelles et recette du 29 septembre
+
+`scripts/prepare-real-dev.mjs --apply` enrichit les chemins `login-test-group1/2`
+avec les listes, accès et historiques de production en lecture seule. Les essais
+DEV existants restent prioritaires. Les semaines de récitation DEV sont prolongées
+jusqu'à la semaine courante, sans valider de récitation automatiquement. Les chaînes
+الجمع déjà commencées en DEV sont conservées pour éviter les collisions de versets.
+Une sauvegarde privée est créée sous `data/`, ignoré par Git, avant toute écriture.
+Une liste fermée de destinations DEV et les ETags protègent chaque écriture.
+
+Préparation effectuée : 15 élèves groupe 1, 25 groupe 2 ; 4 semaines de récitation
+par groupe, 16/23 enregistrements de révision et 6/8 suivis khatma, essais DEV inclus.
+Le module review-dev reprend désormais les mêmes règles de roster/alias et les
+mêmes protections de mutation que review.js de production, dans un fichier séparé.
+
+Confirmer la révision d'un camarade valide **ce camarade**, pas le validateur.
+L'accueil explique maintenant cette situation et se rafraîchit immédiatement
+après une sauvegarde de révision et au retour via « أسبوعي ».
+
+`node tests/dev-live-roundtrip.cjs --run-live` a vérifié le vrai flux EventSource Firebase DEV dans
+Chrome : écriture d'une métadonnée unique sous une semaine DEV, événement reçu,
+relecture immédiate, puis suppression vérifiée. Aucun résultat d'élève n'a changé.
+Ce test est volontairement séparé des tests ordinaires : il écrit temporairement
+uniquement dans `review/groups/login-test-group1/.../_devRealtimeChecks/<UUID>`.

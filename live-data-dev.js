@@ -26,8 +26,8 @@ window.LiveData = {
     function visibility(){if(document.hidden)disconnect();else refresh();}
     const focus=()=>refresh();
     const timer=setInterval(refresh,interval);
-    document.addEventListener('visibilitychange',visibility);window.addEventListener('focus',focus);window.addEventListener('online',focus);
+    document.addEventListener('visibilitychange',visibility);window.addEventListener('focus',focus);window.addEventListener('online',focus);window.addEventListener('shatibiyya:activity-saved',focus);
     refresh();
-    return {refresh,stop(){stopped=true;disconnect();clearInterval(timer);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('focus',focus);window.removeEventListener('online',focus);}};
+    return {refresh,stop(){stopped=true;disconnect();clearInterval(timer);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('focus',focus);window.removeEventListener('online',focus);window.removeEventListener('shatibiyya:activity-saved',focus);}};
   }
 };

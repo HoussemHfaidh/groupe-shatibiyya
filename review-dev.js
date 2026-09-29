@@ -1,9 +1,9 @@
-/* DEV-only revision; never imported by production entry points. */
+/* DEV copy of production review behavior; DEV endpoints are provided by the page. */
 window.Review=(()=>{
  let ctx,key='',data={},epoch=0,busy=false,panel,navButton,heading,list,form,partner,part,result,dialog,duration,errors,studentView=false,selectedDetail="";
  const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text)n.textContent=text;if(cls)n.className=cls;return n;};
  const field=(label,input)=>{const n=el('label','','field');n.append(el('span',label),input);return n;};
- function mount(next){ctx=next;if(!panel)build();if(key!==ctx.storageId){key=ctx.storageId;data={};epoch++;draw();}refresh();}
+ function mount(next){ctx=next;if(!panel)build();const nextKey=JSON.stringify([ctx.storageId,ctx.students,ctx.studentAliases]);if(key!==nextKey){key=nextKey;data={};epoch++;draw();}refresh();}
  function build(){
   panel=el('section','','panel review-panel');panel.hidden=true;
   panel.append(el('h2','المراجعة'),el('p','كل طالب يسمع قسما لزميله، والزميل يؤكد ما سمعه. لا يشترط اعتماد الأستاذ.','subtitle'));
@@ -16,7 +16,7 @@ window.Review=(()=>{
   form.append(field('الطالب الذي قرأ عليّ',partner),field('القسم الذي قرأه',part),field('المدة بالدقائق',duration),field('عدد الأخطاء',errors),submit);
   form.onsubmit=async event=>{event.preventDefault();if(busy||!form.reportValidity())return;const measurement=ReviewModel.metrics({durationMinutes:Number(duration.value),errorCount:Number(errors.value)});const target=partner.value,section=Number(part.value),actor=ctx.name,id=ReviewModel.week(ctx.day).id,token=epoch;
    const finished=await ask(section,target,actor);if(finished===null||token!==epoch)return;
-   mutate(store=>({...store,[id]:ReviewModel.confirm(store[id],actor,target,section,finished,new Date(),measurement)}));
+   mutate(store=>({...store,[id]:ReviewModel.confirm(store[id],window.RosterModel?.resolve(actor,ctx.studentAliases) || actor,window.RosterModel?.resolve(target,ctx.studentAliases) || target,section,finished,new Date(),measurement)}));
   };
   dialog=el('dialog','','review-dialog');dialog.append(el('h3','تأكيد القسم الثاني'),el('p','هل قرأ زميلك من نصف الشاطبية إلى النهاية كاملة؟'));
   panel.append(heading,reload);if(ctx.role==='professor')panel.append(window.TableShare.button(()=>list.querySelector('table'),'متابعة المراجعة'));panel.append(list,form,result);document.body.append(dialog);
@@ -46,9 +46,9 @@ window.Review=(()=>{
  });}
  function ask(section,target,actor){return popup(section===1?'تأكيد القسم الأول':'تأكيد القسم الثاني',`${target} ← قرأ على ${actor}. `+(section===1?'هل قرأ القسم الأول كاملا من البداية إلى النصف؟':'هل قرأ من نصف الشاطبية إلى النهاية كاملة؟'),[['نعم، إلى النهاية',true],['لا، غير مكتمل',false],['إلغاء',null]]);}
  function remote(c){return c.local?'':c.firebaseUrl();}
- async function read(c){await c.prepare?.();const url=remote(c)||`/api/review/${c.storageId}`;const r=await fetch(url,{headers:remote(c)?{'X-Firebase-ETag':'true'}:{},cache:'no-store'});if(!r.ok)throw Error('تعذر تحميل المراجعة. تحقق من اتصال DEV وصلاحيات Firebase.');return remote(c)?{value:await r.json()||{},etag:r.headers.get('etag')}:r.json();}
+ async function read(c){await window.Roster?.refresh(c);await c.prepare?.();const url=remote(c)||`/api/review/${c.storageId}`;const r=await fetch(url,{headers:remote(c)?{'X-Firebase-ETag':'true'}:{},cache:'no-store'});if(!r.ok)throw Error('تعذر تحميل المراجعة. تحقق من الاتصال وصلاحيات Firebase.');const snapshot=remote(c)?{value:await r.json()||{},etag:r.headers.get('etag')}:await r.json();snapshot.value=window.Roster?.project(snapshot.value,c)||snapshot.value;return snapshot;}
  async function refresh(){if(!ctx||busy||ctx.ready===false)return;const c=ctx,token=epoch;try{const s=await read(c);if(token!==epoch||busy)return;data=s.value;draw();result.textContent='';if(ReviewModel.ensure(data,c.students,c.day)!==data)await mutate(store=>ReviewModel.ensure(store,c.students,c.day));}catch(e){if(token===epoch)result.textContent=e.message;}}
- async function mutate(change){if(busy||!ctx||ctx.ready===false)return;const c=ctx,token=epoch;busy=true;draw();result.textContent='جار الحفظ...';try{const s=await read(c);if(token!==epoch)throw Error('تغير الحساب أو المجموعة.');const value=change(s.value);const url=remote(c);if(url&&!s.etag)throw Error('تعذر تأمين الحفظ.');const r=await fetch(url||`/api/review/${c.storageId}`,{method:'PUT',headers:{'Content-Type':'application/json',...(url?{'if-match':s.etag}:{})},body:JSON.stringify(url?value:{value,revision:s.revision})});if([409,412].includes(r.status))throw Error('تم تحديث المراجعة عند زميلك. حدّث القائمة وأعد المحاولة.');if(!r.ok)throw Error('تعذر حفظ المراجعة.');if(token===epoch){data=value;result.textContent='تم تسجيل المراجعة.';}}catch(e){if(token===epoch)result.textContent=e.message;}finally{busy=false;draw();}}
+ async function mutate(change){if(busy||!ctx||ctx.ready===false)return;const c=ctx,token=epoch;busy=true;draw();result.textContent='جار الحفظ...';try{const s=await read(c);if(token!==epoch)throw Error('تغير الحساب أو المجموعة.');const value=change(ReviewModel.ensure(s.value,c.students,c.day));const url=remote(c);if(url&&!s.etag)throw Error('تعذر تأمين الحفظ.');const r=await fetch(url||`/api/review/${c.storageId}`,{method:'PUT',headers:{'Content-Type':'application/json',...(url?{'if-match':s.etag}:{})},body:JSON.stringify(url?value:{value,revision:s.revision})});if([409,412].includes(r.status))throw Error('تم تحديث المراجعة عند زميلك. حدّث القائمة وأعد المحاولة.');if(!r.ok)throw Error('تعذر حفظ المراجعة.');if(token===epoch){data=value;result.textContent='تم تسجيل المراجعة.';window.dispatchEvent(new CustomEvent('shatibiyya:activity-saved',{detail:{storageId:c.storageId}}));}}catch(e){if(token===epoch)result.textContent=e.message;}finally{busy=false;draw();if(token!==epoch&&ctx)refresh();}}
  function current(){return data[ReviewModel.week(ctx.day).id];}
  function drawPart(){if(!ctx)return;const assigned=current()?.assigned?.[partner.value];part.disabled=busy||!partner.value||!!assigned;if(assigned)part.value=String(assigned);}
  async function editProfessor(id,name){

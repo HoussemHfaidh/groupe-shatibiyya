@@ -6,3 +6,7 @@ test('four completed activities produce sunny weather; khatma measures form subm
 test('partial review is never represented as complete',()=>{const value=data();value.review['2026-09-26'].records[0].complete=false;const result=M.summary(value,now);assert.equal(result.done,3);assert.equal(result.cards[2].state,'partial');assert.equal(result.weather,'partly');});
 test('unopened and disabled Jam is neutral; failures are unknown',()=>{const value=data();value.jam={};assert.equal(M.summary(value,now).total,3);value.errors=['review'];assert.equal(M.summary(value,now).weather,'unknown');assert.equal(M.summary({...value,jamEnabled:false},now).cards[1].state,'waiting');});
 test('new weeks and group calendars do not reuse historical completions',()=>{assert.equal(M.summary(data(),new Date('2026-10-03T04:00:00Z')).done,0);const value=data();value.day=0;const result=M.summary(value,now);assert.equal(result.week.startDate,'2026-09-27');assert.equal(result.cards[2].state,'todo');});
+test('confirming a peer does not mark your own review done and explains the difference',()=>{
+ const value=data();value.review['2026-09-26'].records=[{student:'علي',validator:'أحمد',complete:true}];
+ const card=M.summary(value,now).cards[2];assert.equal(card.state,'todo');assert.match(card.detail,/أكدت مراجعة زميلك/);
+});

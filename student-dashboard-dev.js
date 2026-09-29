@@ -2,18 +2,19 @@ window.StudentDashboard=(()=>{
   let ctx,key='',panel,content,connection,nav,watch,epoch=0,lastRead=0;
   const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
   const labels={recitation:'التسميع',jam:'واجب الجمع',review:'المراجعة',khatma:'متابعة الختمات الفردية'};
-  function show(){
+  function show(refreshNow=true){
     if(!ctx)return;
     const navigation=ctx.host.querySelector('.jam-navigation');
     navigation.querySelector('button').click();
     [...ctx.host.children].filter(n=>n!==panel&&!n.contains(navigation)&&!n.matches('.account-box,.eyebrow')).forEach(n=>n.hidden=true);
     panel.hidden=false;[...navigation.children].forEach(n=>n.setAttribute('aria-pressed',String(n===nav)));
+    if(refreshNow)watch?.refresh();
   }
   function build(){
     panel=el('section',undefined,'student-dashboard');content=el('div');connection=el('p','جار تحديث أسبوعك…','dashboard-connection');connection.setAttribute('aria-live','polite');
     const refresh=el('button','تحديث حالتي','secondary');refresh.type='button';refresh.onclick=()=>watch?.refresh();
     panel.append(content,connection,refresh);ctx.host.append(panel);
-    const navigation=ctx.host.querySelector('.jam-navigation');nav=el('button','أسبوعي','secondary');nav.type='button';nav.onclick=show;
+    const navigation=ctx.host.querySelector('.jam-navigation');nav=el('button','أسبوعي','secondary');nav.type='button';nav.onclick=()=>show();
     navigation.addEventListener('click',e=>{if(e.target!==nav){panel.hidden=true;nav.setAttribute('aria-pressed','false');}});navigation.append(nav);navigation.before(panel);nav.style.order='-1';
     // The existing first button was التسميع; keep its navigation behavior available.
   }
@@ -59,9 +60,9 @@ window.StudentDashboard=(()=>{
     const nextKey=`${next.storageId}:${next.name}`;ctx=next;
     if(!panel)build();
     nav.hidden=false;
-    if(key===nextKey){if(!panel.hidden)show();return;}
+    if(key===nextKey){if(!panel.hidden)show(false);return;}
     key=nextKey;epoch++;watch?.stop();content.replaceChildren();connection.textContent='جار تحديث أسبوعك…';
-    show();watch=LiveData.watch({prepare:()=>ctx?.prepare?.(),urls:()=>['config','jam','review','khatma'].filter(type=>type==='config'||!ctx.local).map(type=>ctx.url(type)),change:refresh,state:state=>{if(state==='retry'&&ctx)connection.textContent='جار إعادة الاتصال؛ يتم التحقق تلقائيا.';}});
+    show(false);watch=LiveData.watch({prepare:()=>ctx?.prepare?.(),urls:()=>['config','jam','review','khatma'].filter(type=>type==='config'||!ctx.local).map(type=>ctx.url(type)),change:refresh,state:state=>{if(state==='retry'&&ctx)connection.textContent='جار إعادة الاتصال؛ يتم التحقق تلقائيا.';}});
   }
   function logout(){epoch++;watch?.stop();watch=null;ctx=null;key='';content?.replaceChildren();if(panel)panel.hidden=true;if(nav)nav.hidden=true;}
   return {mount,logout};

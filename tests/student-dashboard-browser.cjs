@@ -38,6 +38,17 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await page.locator('.dashboard-card[data-activity=review]').waitFor();
   assert.equal(await page.locator('#submissionForm').isVisible(),false);
   assert.match(await page.locator('.student-dashboard').innerText(),/أسبوع جديد/);
+  await page.locator('.dashboard-card[data-activity=review]').click();
+  const reviewPanel=page.locator('.review-panel');
+  await reviewPanel.getByLabel('الطالب الذي قرأ عليّ').selectOption('علي');
+  await reviewPanel.getByLabel('القسم الذي قرأه').selectOption('1');
+  await reviewPanel.getByLabel('المدة بالدقائق').fill('5');await reviewPanel.getByLabel('عدد الأخطاء').fill('0');
+  await reviewPanel.getByRole('button',{name:'تأكيد مراجعة زميلي'}).click();
+  await page.getByRole('button',{name:'نعم، إلى النهاية',exact:true}).click();
+  await reviewPanel.getByText('لا يوجد زميل متاح حاليا.',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'أسبوعي',exact:true}).click();
+  await page.getByText('أكدت مراجعة زميلك؛ مراجعتك أنت تنتظر تأكيد زميلك',{exact:true}).waitFor();
+  assert.ok((stores[reviewPath][date].records||[]).some(r=>r.student==='علي'&&r.validator==='أحمد'));
   stores[configPath].statuses['احمد__w']='done';stores[reviewPath][date].records=[{student:'أحمد',complete:false}];stores[jamPath]['week-'+date].confirmations.push({student:'أحمد',verseIndex:1});stores[khatmaPath]={entries:{e:{student:'أحمد',date,attendance:'present'}}};
   await page.evaluate(()=>signalActivity('/review/'));await page.clock.runFor(400);
   await page.locator('.dashboard-partial').waitFor();

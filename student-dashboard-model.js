@@ -12,7 +12,8 @@
     const duty=Object.values(jam||{}).find(w=>w.startDate===week.startDate);
     const jamCard=!jamEnabled?item('jam','واجب الجمع','waiting','غير مفعّل لهذه المجموعة'):errors.includes('jam')?unknown('jam','واجب الجمع'):!duty || !(duty.confirmations||[]).length?item('jam','واجب الجمع','waiting','بانتظار فتح الأستاذ للواجب'):item('jam','واجب الجمع',(duty.confirmations||[]).some(r=>r.student===name)?'done':'todo',(duty.confirmations||[]).some(r=>r.student===name)?'تم اعتماد واجبك':'واجبك متاح هذا الأسبوع');
     const record=review?.[week.startDate]?.records?.find(r=>r.student===name);
-    const reviewCard=errors.includes('review')?unknown('review','المراجعة'):item('review','المراجعة',record?(record.complete?'done':'partial'):'todo',record?(record.complete?'تمت مراجعة القسم المطلوب':'مراجعتك مسجلة، لكن القسم غير مكتمل'):'راجع القسم المطلوب مع زميلك ليؤكد لك');
+    const confirmedPeers=(review?.[week.startDate]?.records||[]).filter(r=>r.validator===name && r.student!==name).length;
+    const reviewCard=errors.includes('review')?unknown('review','المراجعة'):item('review','المراجعة',record?(record.complete?'done':'partial'):'todo',record?(record.complete?'تمت مراجعة القسم المطلوب':'مراجعتك مسجلة، لكن القسم غير مكتمل'):confirmedPeers?'أكدت مراجعة زميلك؛ مراجعتك أنت تنتظر تأكيد زميلك':'راجع القسم المطلوب مع زميلك ليؤكد لك');
     const entries=Object.values(khatma?.entries||{}).filter(e=>e.student===name && e.date>=week.startDate && e.date<week.endDate);
     const khatmaCard=errors.includes('khatma')?unknown('khatma','متابعة الختمات الفردية'):item('khatma','متابعة الختمات الفردية',entries.length?'done':'todo',entries.length?`تم تسجيل متابعة هذا الأسبوع (${entries.length})`:'سجّل متابعة حصتك لهذا الأسبوع');
     const cards=[rec,jamCard,reviewCard,khatmaCard],available=cards.filter(c=>c.state!=='waiting'),done=cards.filter(c=>c.state==='done').length;
