@@ -19,7 +19,7 @@ const production = process.env.TEST_PRODUCTION === '1';
    const subPath=production&&group==='group1'?'/submissions.json':`/submissions/groups/${storage}.json`;
    const reviewPath=`/review/groups/${storage}.json`;
    stores[configPath]={students:['أحمد','علي','عمر'],weeks:[{id:'week1',start:1,end:10,date:'2026-09-11'}],settings:{weekBoundaryDay:group==='group1'?6:0},statuses:{'احمد__week1':'done'}};
-   stores[subPath]={};stores[reviewPath]={};stores[`/jam/groups/${storage}.json`]={};
+   stores[`/khatma/groups/${storage}.json`]={};stores['/khatma/catalogs/production.json']={};stores['/khatma/catalogs/login-test.json']={};stores[subPath]={};stores[reviewPath]={};stores[`/jam/groups/${storage}.json`]={};
    await context.addInitScript(production=>{if(location.protocol!=='http:')return;window.SHATIBIYYA_JAM_LOCAL_DEV=false;localStorage.setItem(production?'shatibiyya-production-session':'shatibiyya-login-test-session',JSON.stringify({email:'student@example.test',emailOnly:true,expiresAt:Date.now()+86400000}));},production);
    await context.route('https://**/*',async route=>{
     const req=route.request(),url=new URL(req.url()),p=url.pathname;
@@ -43,6 +43,7 @@ const production = process.env.TEST_PRODUCTION === '1';
    const page=await context.newPage();await page.clock.install({time:new Date('2026-09-11T10:00:00Z')});
    const base=`http://127.0.0.1:${server.address().port}/`;
    await page.goto(base+(production?'student.html':'student-login-dev.html'));
+   await page.getByRole('button',{name:'التسميع',exact:true}).click();
    await page.locator('#studentSelect').selectOption('علي');
    const submit=page.locator('#submissionForm button[type=submit]');await submit.click();
    assert.match(await page.locator('dialog[open]').innerText(),/علي/);assert.match(await page.locator('dialog[open]').innerText(),/أحمد/);assert.match(await page.locator('dialog[open]').innerText(),/1.*10/);

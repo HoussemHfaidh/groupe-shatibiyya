@@ -59,7 +59,7 @@ window.Attendance = (() => {
     nav.append(navButton); ctx.host.append(panel);
   }
   function persist(next, aliases = learned) {
-    try { localStorage.setItem(key, JSON.stringify({version:2,sessions:next,aliases})); data = next; learned = aliases; return true; }
+    try { localStorage.setItem(key, JSON.stringify({version:2,sessions:next,aliases})); const changed=next.filter(session=>JSON.stringify(session)!==JSON.stringify(data.find(old=>old.id===session.id)));const removed=data.filter(old=>!next.some(session=>session.id===old.id)).map(old=>old.id);data = next; learned = aliases;window.dispatchEvent(new CustomEvent('shatibiyya:attendance-saved',{detail:{storageId:ctx.storageId,changed,removed}})); return true; }
     catch { status.textContent = 'تعذر الحفظ في المتصفح. لم يتم تطبيق التغيير؛ تحقق من مساحة التخزين.'; return false; }
   }
   async function importFile() {

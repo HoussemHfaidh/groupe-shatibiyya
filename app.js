@@ -32,7 +32,7 @@ const defaultStudents = [
   "معز بن زيد",
   "ياسين بن عمار",
   "أشرف السماوي",
-  "فارس المسعدي",
+  "فراس المسعدي",
   "حمزة الورتاني",
 ];
 
@@ -386,6 +386,7 @@ async function syncConfigNow(snapshot=configSnapshot()) {
   syncChains.set(snapshot.key,work);
   try {await work;if(snapshot.key===currentStorageKey())updateBackendUi("تم حفظ التغييرات.");return true;}
   catch(e){if(snapshot.key===currentStorageKey())updateBackendUi(e.message);return false;}
+  finally{if(syncChains.get(snapshot.key)===work)syncChains.delete(snapshot.key);}
 }
 async function editRoster(action, oldName, newName) {
   if(rosterBusy || !jamConfigReady) return false;
@@ -939,6 +940,7 @@ function renderReportDate() {
 }
 
 function render(selectedWeekId) {
+  const activeSection=document.querySelector('.jam-navigation [aria-pressed="true"]')?.textContent;
   if (window.Jam) {
     const storageId = isProfessorDevMode() ? currentDevStorageId() : currentGroupId;
     window.Jam.mount({
@@ -958,6 +960,12 @@ function render(selectedWeekId) {
     host:document.querySelector("main.layout"),local:false,
     firebaseUrl:((id)=>()=>getFirebaseUrl()?firebasePath(`khatma/groups/${id}`):"")(currentGroupId)});
   window.Attendance?.mount({role:"professor",...rosterContext(),students:[...state.students],ready:jamConfigReady,storageId:currentGroupId,host:document.querySelector("main.layout")});
+  window.ProfessorMatrix?.mount({role:'professor', ...rosterContext(), students:[...state.students],
+    storageId:currentGroupId, ready:jamConfigReady, day:state.settings.weekBoundaryDay,
+    matrixUrl:((path)=>()=>getFirebaseUrl()?firebasePath(path+'/studentStatus'):'')(groupPath('config')),
+    host:document.querySelector('main.layout'), local:false,
+    recitations:state.weeks.map(w=>({...w,statuses:Object.fromEntries(state.students.map(name=>[name,getStatus(name,w.id)]))})),
+    sourceUrl:((id)=>type=>getFirebaseUrl()?firebasePath(`${type}/groups/${id}`):'')(currentGroupId)});
   sortWeeks();
   renderWeekSelect(selectedWeekId);
   renderSettings();
@@ -968,6 +976,7 @@ function render(selectedWeekId) {
   renderReportDate();
   updateBackendUi();
   scrollToSelectedWeek();
+  if(activeSection){const button=[...document.querySelectorAll('.jam-navigation button')].find(b=>b.textContent===activeSection);if(button && button.getAttribute('aria-pressed')!=='true')button.click();}
 }
 
 function sortWeeks() {
@@ -1552,7 +1561,10 @@ elements.shareBtn.addEventListener("click", () => exportImage(true));
 elements.resetBtn.addEventListener("click", resetApp);
 
 render();
-loadConfigFromBackend();
+if (!window.LiveData) loadConfigFromBackend();
 loadSubmissions();
 
-if (window.SHATIBIYYA_PRODUCTION_MODE) setInterval(loadConfigFromBackend, 30000);
+if (window.SHATIBIYYA_PRODUCTION_MODE && window.LiveData) LiveData.watch({
+  urls:()=>getFirebaseUrl()?[firebasePath(groupPath('config'))]:[],
+  change:async()=>{if(rosterBusy || syncTimers.has(currentStorageKey()) || syncChains.has(currentStorageKey()) || document.querySelector('dialog[open]') || document.activeElement?.matches('input,select,textarea'))return;await loadConfigFromBackend();}
+});

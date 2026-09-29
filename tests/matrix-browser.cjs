@@ -2,6 +2,7 @@ const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const fs=require('node:fs/promises');
 const path=require('node:path');
+const production=process.env.TEST_PRODUCTION==='1';
 (async()=>{
  const browser=await chromium.launch({headless:true,channel:'chrome'});
  try{
@@ -82,14 +83,15 @@ const path=require('node:path');
   await page.getByText('تم تحميل البيانات.',{exact:false}).waitFor();assert.equal(await page.getByText('معلق الأسبوع التالي',{exact:true}).count(),0);
   assert.equal(await page.evaluate(()=>localStorage.getItem('shatibiyya-matrix-v1:login-test-group2')),null);
   assert.deepEqual(errors,[]);
-  let liveRecitation='';
+  let liveRecitation='';let remoteMatrix=null;
   const integrated=await browser.newPage({viewport:{width:1440,height:1000}});
   await integrated.addInitScript(()=>{window.streams=[];window.EventSource=class{constructor(url){this.url=url;this.events={};window.streams.push(this);}addEventListener(type,fn){this.events[type]=fn;}close(){this.closed=true;}};window.signalMatrix=()=>streams.filter(s=>!s.closed).forEach(s=>s.events.patch?.({data:'{}'}));});
   integrated.on('pageerror',e=>errors.push(e.message));
   await integrated.route('**/*',async route=>{
    const url=new URL(route.request().url());
    if(url.hostname.endsWith('firebasedatabase.app')){
-    assert.match(url.pathname,/login-(test|sandbox)/);
+    if(production)assert.doesNotMatch(url.pathname,/login-(test|sandbox)/);else assert.match(url.pathname,/login-(test|sandbox)/);
+    if(url.pathname.endsWith('/studentStatus.json')){if(route.request().method()==='PUT')remoteMatrix=route.request().postDataJSON();return route.fulfill({json:remoteMatrix,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-expose-headers':'ETag',ETag:'\"0\"'}});}
     const value=url.pathname.startsWith('/config')?{students:['طالب'],weeks:[{id:'matrix-w',date:w,start:1,end:10}],settings:{weekBoundaryDay:url.pathname.includes('group2')?0:6},statuses:{'طالب__matrix-w':liveRecitation}}:{};
     return route.fulfill({json:value,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-expose-headers':'ETag',ETag:'"0"'}});
    }
@@ -97,7 +99,7 @@ const path=require('node:path');
    const file=url.pathname.slice(1);
    return route.fulfill({contentType:file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8',body:await fs.readFile(path.join(__dirname,'..',file))});
   });
-  await integrated.goto('http://matrix.test/prof-login-dev.html?devMode=data');
+  await integrated.goto('http://matrix.test/'+(production?'index.html':'prof-login-dev.html')+'?devMode=data');
   await integrated.getByRole('button',{name:'حالة الطلاب',exact:true}).click();
   await integrated.getByText('تم تحميل البيانات.',{exact:false}).waitFor();
   await integrated.getByLabel('أسبوع حالة الطلاب').selectOption(w);
@@ -106,6 +108,7 @@ const path=require('node:path');
   liveRecitation='done';await integrated.evaluate(()=>signalMatrix());
   await integrated.waitForFunction(()=>document.querySelector('input[aria-label="طالب: عدم تسميع الأبيات"]')?.value==='0');
   await recital.fill('2');await recital.press('Tab');
+  if(production){for(let i=0;i<100&&!remoteMatrix?.overrides?.[w];i++)await integrated.waitForTimeout(20);assert.ok(remoteMatrix?.overrides?.[w]);}
   liveRecitation='missed';await integrated.evaluate(()=>signalMatrix());await integrated.waitForTimeout(600);
   assert.equal(await recital.inputValue(),'2');
   await integrated.locator('#groupSelect').selectOption('group2');

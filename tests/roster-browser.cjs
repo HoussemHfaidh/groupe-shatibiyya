@@ -12,7 +12,7 @@ const production=process.env.TEST_PRODUCTION==='1';
  const configPath=g=>production?(g==='group1'?'/config.json':'/config/groups/group2.json'):`/config/groups/login-test-${g}.json`;
  const storageId=g=>production?g:`login-test-${g}`;
  for(const group of ['group1','group2']){
-  const id=storageId(group),day=group==='group1'?6:0;
+  const id=storageId(group),day=group==='group1'?6:0;stores[group==='group1'?'/config/studentStatus.json':'/config/groups/group2/studentStatus.json']={};
   stores[configPath(group)]={students:['أحمد','علي'],weeks:[{id:'week1',date:'2026-09-25',start:1,end:10}],settings:{weekBoundaryDay:day},statuses:{'احمد__week1':'done'},readyOrder:{week1:['أحمد']},loginEmails:{fixture:{studentName:'أحمد',role:'student'}}};
   stores[production&&group==='group1'?'/submissions.json':`/submissions/groups/${id}.json`]={};
   const week=Review.week(day,now);stores[`/review/groups/${id}.json`]={[week.id]:{...week,students:['أحمد','علي'],records:[{student:'أحمد',validator:'علي',part:1,complete:true,durationMinutes:5,errorCount:0}]}};
@@ -28,7 +28,7 @@ const production=process.env.TEST_PRODUCTION==='1';
   if(p.includes('loginEmails'))return route.fulfill({headers,json:{role:'student',studentName:'أحمد',groupId:'group1'}});
   assert.ok(Object.hasOwn(stores,p),`unexpected request ${method} ${p}`);
   if((conflict||offline)&&method==='PUT'&&p.includes('config'))return route.fulfill({status:offline?503:412,headers,json:{error:'fixture'}});
-  if(method==='PUT'){assert.equal(request.headers()['if-match'],headers.ETag);stores[p]=request.postDataJSON();revisions[p]=(revisions[p]||0)+1;}
+  if(method==='PUT'){if(request.headers()['if-match']!==headers.ETag)return route.fulfill({status:412,headers,json:{error:'concurrent write'}});stores[p]=request.postDataJSON();revisions[p]=(revisions[p]||0)+1;}
   if(method==='PATCH'){Object.assign(stores[p],request.postDataJSON());revisions[p]=(revisions[p]||0)+1;}
   return route.fulfill({headers,json:stores[p]});
  });
