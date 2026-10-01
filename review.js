@@ -68,8 +68,12 @@ window.Review=(()=>{
   if(!['group2','login-test-group2'].includes(ctx.storageId))return students;
   return students.filter(name=>name.normalize('NFKC').replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/ى/g,'ي').trim().replace(/\s+/g,' ')!=='محمد الصادق الكشباطي');
  }
+ function countedWeek(week){
+  return !(['group2','login-test-group2'].includes(ctx.storageId)&&week.startDate==='2026-09-13');
+ }
+ function historyWeeks(){return Object.values(data).filter(countedWeek);}
  function professorTable(currentWeek){
-  const weeks=[currentWeek,...Object.values(data).filter(w=>w.id!==currentWeek.id)].sort((a,b)=>a.startDate.localeCompare(b.startDate)).map(w=>({...w,students:tableStudents(w.students||[])}));
+  const weeks=[currentWeek,...historyWeeks().filter(w=>w.id!==currentWeek.id)].filter(countedWeek).sort((a,b)=>a.startDate.localeCompare(b.startDate)).map(w=>({...w,students:tableStudents(w.students||[])}));
   const names=[...new Set([...tableStudents(ctx.students),...weeks.flatMap(w=>w.students||[])])];
   const table=el('table','','review-professor-table tracking-table');
   table.style.setProperty('--week-count',weeks.length);
@@ -116,12 +120,12 @@ window.Review=(()=>{
    const toggle=el('button',studentView?'عرض الجدول':'عرض حسب الطالب','secondary');toggle.type='button';toggle.onclick=()=>{studentView=!studentView;draw();};list.append(toggle);
    if(studentView){
     const selector=el('select');selector.setAttribute('aria-label','تفاصيل الطالب');
-    const names=tableStudents([...new Set([...ctx.students,...Object.values(data).flatMap(x=>x.students||[])])]);const recordsFor=n=>Object.values(data).flatMap(w=>(w.records||[]).filter(r=>r.student===n));
+    const names=tableStudents([...new Set([...ctx.students,...historyWeeks().flatMap(x=>x.students||[])])]);const recordsFor=n=>historyWeeks().flatMap(w=>(w.records||[]).filter(r=>r.student===n));
     names.forEach(n=>selector.add(new Option(`${n} · ${recordsFor(n).length} مراجعات`,n)));
     if(!names.includes(selectedDetail))selectedDetail=names.find(n=>recordsFor(n).some(r=>r.durationMinutes!=null))||names.find(n=>recordsFor(n).length)||names[0]||'';
     selector.value=selectedDetail;selectedDetail=selector.value;selector.onchange=()=>{selectedDetail=selector.value;draw();};list.append(selector);
     const table=el('table','','review-table review-details'),head=el('tr');['الأسبوع','القسم','المدة بالدقائق','عدد الأخطاء','النتيجة'].forEach(t=>head.append(el('th',t)));table.append(head);
-    let count=0;for(const week of Object.values(data).sort((a,b)=>b.id.localeCompare(a.id))){const r=ReviewModel.recordFor(week,selectedDetail);if(!r)continue;count++;const row=el('tr');[week.startDate,r.part===1?'الأول':'الثاني',r.durationMinutes??'غير مسجل',r.errorCount??'غير مسجل',r.complete?'مكتمل':'غير مكتمل'].forEach(t=>row.append(el('td',String(t))));table.append(row);}list.append(table);if(!count)list.append(el('p','لا توجد مراجعات مسجلة لهذا الطالب.'));
+    let count=0;for(const week of historyWeeks().sort((a,b)=>b.id.localeCompare(a.id))){const r=ReviewModel.recordFor(week,selectedDetail);if(!r)continue;count++;const row=el('tr');[week.startDate,r.part===1?'الأول':'الثاني',r.durationMinutes??'غير مسجل',r.errorCount??'غير مسجل',r.complete?'مكتمل':'غير مكتمل'].forEach(t=>row.append(el('td',String(t))));table.append(row);}list.append(table);if(!count)list.append(el('p','لا توجد مراجعات مسجلة لهذا الطالب.'));
    }else professorTable(w);
   }else list.append(tableFor(w));
   const selected=partner.value;partner.replaceChildren();

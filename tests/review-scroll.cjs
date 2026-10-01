@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
    const page=await browser.newPage({viewport:{width,height:844}});
    await page.clock.install({time:new Date('2026-10-01T10:00:00Z')});
    const students=['أحمد','علي','عمر','محمد الصادق الكشباطي'];
-   const value=Object.fromEntries(['2026-09-19','2026-09-05','2026-09-26','2026-09-12'].map(date=>[date,{id:date,startDate:date,endDate:date==='2026-09-26'?'2026-10-03':'2026-09-26',students,records:[{student:students[0],part:1,complete:true},{student:students[3],part:1,complete:true}]}]));
+   const value=Object.fromEntries(['2026-09-19','2026-09-05','2026-09-26','2026-09-12','2026-09-13'].map(date=>[date,{id:date,startDate:date,endDate:date==='2026-09-26'?'2026-10-03':'2026-09-26',students,records:[{student:students[0],part:1,complete:true},{student:students[3],part:1,complete:true}]}]));
    await page.route('http://review.test/**',async route=>{
     const pathname=new URL(route.request().url()).pathname;
     if(pathname.startsWith('/api/'))return route.fulfill({json:{value,revision:0}});
@@ -20,13 +20,13 @@ const assert = require('node:assert/strict');
    await page.getByRole('button',{name:'المراجعة',exact:true}).click();
    const table=page.locator('.review-professor-table');
    await table.locator('thead tr:last-child th').last().waitFor();
-   assert.deepEqual((await table.locator('thead tr:last-child th').allTextContents()).slice(4),['05/09/2026','12/09/2026','19/09/2026','26/09/2026']);
+   assert.deepEqual((await table.locator('thead tr:last-child th').allTextContents()).slice(4),group==='group2'?['05/09/2026','12/09/2026','19/09/2026','26/09/2026']:['05/09/2026','12/09/2026','13/09/2026','19/09/2026','26/09/2026']);
    await page.evaluate(()=>{let ref=document.querySelector('#reference');if(!ref){ref=document.createElement('table');ref.id='reference';ref.className='tracking-table';ref.innerHTML='<tr class="table-header-row"><th class="index-col">#</th></tr><tr><td>1</td></tr>';document.body.append(ref);}});
    const styles=await page.evaluate(()=>{const props=['fontSize','fontFamily','padding','borderTopColor','borderTopWidth','height'];const read=s=>{const c=getComputedStyle(document.querySelector(s));return props.map(p=>c[p]);};return [read('#reference tr:last-child td'),read('.review-professor-table tbody tr:first-child td'),read('#reference th'),read('.review-professor-table .table-header-row th')];});
    assert.deepEqual(styles[0],styles[1]);assert.deepEqual(styles[2],styles[3]);
    await page.locator("#reference").evaluate(e=>e.remove());
 
-   assert.deepEqual(await table.locator('.week-percent-row td').allTextContents(),Array(4).fill(group==='group2'?'33%':'50%'));
+   assert.deepEqual(await table.locator('.week-percent-row td').allTextContents(),Array(group==='group2'?4:5).fill(group==='group2'?'33%':'50%'));
    const displayed=await table.locator('tbody .name-col').allTextContents();
    assert.deepEqual(displayed,group==='group2'?students.slice(0,3):students);
    const fixed=table.locator('tbody tr:first-child .sticky-col');
