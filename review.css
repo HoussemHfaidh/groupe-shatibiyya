@@ -19,3 +19,10 @@
 .review-professor-table th, .review-professor-table td, .review-details th, .review-details td { padding: .3rem .5rem; }
 .review-professor-table .review-cell-button { padding: .1rem; min-height: 28px; }
 .review-professor-table caption { padding: .4rem; }
+
+/* Match recitation's scrolling and frozen identity columns. */
+.review-professor-table.tracking-table{border-collapse:separate;border-spacing:0;table-layout:fixed;width:calc(var(--index-col-width) + var(--name-col-width) + var(--completion-col-width) + var(--percent-col-width) + var(--week-count) * var(--week-col-width));min-width:calc(var(--index-col-width) + var(--name-col-width) + var(--completion-col-width) + var(--percent-col-width) + var(--week-count) * var(--week-col-width))}
+.review-professor-table.tracking-table th,.review-professor-table.tracking-table td{padding:3px 6px}
+.review-professor-table.tracking-table thead th{white-space:normal;overflow-wrap:anywhere}
+.review-professor-table.tracking-table tfoot .sticky-col{background:#b4c6e7}
+.review-table-scroll{margin-top:1rem}
