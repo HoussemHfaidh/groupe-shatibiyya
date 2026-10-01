@@ -1,9 +1,5 @@
 .review-panel{direction:rtl;grid-column:1/-1;min-width:0}.review-list{overflow-x:auto;margin:1rem 0}.review-table{width:100%;border-collapse:collapse}.review-table th,.review-table td{padding:.7rem;border:1px solid #cbd5e1;text-align:right}.review-green{background:#dcfce7;color:#14532d}.review-red{background:#fee2e2;color:#991b1b}.review-orange{background:#ffedd5;color:#9a3412}.review-blue{background:#dbeafe;color:#1e40af}.review-dialog{max-width:min(90vw,460px);border:0;border-radius:16px;padding:24px;direction:rtl}.review-dialog::backdrop{background:#0008}.review-dialog button{margin:6px}.review-panel[hidden]{display:none!important}
 
-.review-professor-table{min-width:680px;table-layout:auto;border:2px solid #334155;color:#111;background:white}
-.review-professor-table th,.review-professor-table td{border:1px solid #475569;text-align:center;white-space:nowrap;padding:.55rem .8rem}
-.review-professor-table tbody th{text-align:right;font-weight:500}
-.review-professor-table thead tr:last-child th,.review-professor-table tfoot{background:#b4c6e7;font-weight:700}
 .review-professor-table .review-orange{background:#ffc000;color:#111}
 .review-professor-table .review-green{background:#92d050;color:#111}
 .review-professor-table .review-yellow{background:#ffff00;color:#111}
@@ -14,15 +10,6 @@
 
 .review-dialog p{white-space:pre-line;line-height:1.8}.review-dialog button{min-height:44px;margin:6px;padding:10px 16px}
 
-/* Keep professor history and student-detail tables compact. */
-.review-professor-table, .review-details { width: auto; min-width: 0; font-size: 13px; line-height: 1.4; }
-.review-professor-table th, .review-professor-table td, .review-details th, .review-details td { padding: .3rem .5rem; }
-.review-professor-table .review-cell-button { padding: .1rem; min-height: 28px; }
-.review-professor-table caption { padding: .4rem; }
-
-/* Match recitation's scrolling and frozen identity columns. */
-.review-professor-table.tracking-table{border-collapse:separate;border-spacing:0;table-layout:fixed;width:calc(var(--index-col-width) + var(--name-col-width) + var(--completion-col-width) + var(--percent-col-width) + var(--week-count) * var(--week-col-width));min-width:calc(var(--index-col-width) + var(--name-col-width) + var(--completion-col-width) + var(--percent-col-width) + var(--week-count) * var(--week-col-width))}
-.review-professor-table.tracking-table th,.review-professor-table.tracking-table td{padding:3px 6px}
-.review-professor-table.tracking-table thead th{white-space:normal;overflow-wrap:anywhere}
-.review-professor-table.tracking-table tfoot .sticky-col{background:#b4c6e7}
+.review-details{width:auto;min-width:0;font-size:13px;line-height:1.4}
+.review-details th,.review-details td{padding:.3rem .5rem}
 .review-table-scroll{margin-top:1rem}

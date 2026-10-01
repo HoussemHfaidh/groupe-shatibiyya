@@ -13,7 +13,7 @@ const assert = require('node:assert/strict');
    await page.route('http://review.test/**',async route=>{
     const pathname=new URL(route.request().url()).pathname;
     if(pathname.startsWith('/api/'))return route.fulfill({json:{value,revision:0}});
-    if(pathname==='/')return route.fulfill({contentType:'text/html',body:`<!doctype html><html dir="rtl"><meta charset="utf-8"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="review${variant}.css"><main class="layout"><div class="jam-professor-navigation"><nav class="jam-navigation"><button>التسميع</button></nav></div></main><script src="table-share.js"></script><script src="weekly-clock.js"></script><script src="review-model.js"></script><script src="review${variant}.js"></script><script>Review.mount({host:document.querySelector('main'),role:'professor',storageId:'test',local:true,students:${JSON.stringify(students)},day:6});</script></html>`});
+    if(pathname==='/')return route.fulfill({contentType:'text/html',body:`<!doctype html><html dir="rtl"><meta charset="utf-8"><link rel="stylesheet" href="styles-dev.css"><link rel="stylesheet" href="review${variant}.css"><main class="layout"><div class="jam-professor-navigation"><nav class="jam-navigation"><button>التسميع</button></nav></div></main><script src="table-share.js"></script><script src="weekly-clock.js"></script><script src="review-model.js"></script><script src="review${variant}.js"></script><script>Review.mount({host:document.querySelector('main'),role:'professor',storageId:'test',local:true,students:${JSON.stringify(students)},day:6});</script></html>`});
     return route.fulfill({contentType:pathname.endsWith('.css')?'text/css':'text/javascript',body:await fs.readFile(path.join(__dirname,'..',pathname))});
    });
    await page.goto('http://review.test/');
@@ -21,6 +21,11 @@ const assert = require('node:assert/strict');
    const table=page.locator('.review-professor-table');
    await table.locator('thead tr:last-child th').last().waitFor();
    assert.deepEqual((await table.locator('thead tr:last-child th').allTextContents()).slice(4),['05/09/2026','12/09/2026','19/09/2026','26/09/2026']);
+   await page.evaluate(()=>{let ref=document.querySelector('#reference');if(!ref){ref=document.createElement('table');ref.id='reference';ref.className='tracking-table';ref.innerHTML='<tr class="table-header-row"><th class="index-col">#</th></tr><tr><td>1</td></tr>';document.body.append(ref);}});
+   const styles=await page.evaluate(()=>{const props=['fontSize','fontFamily','padding','borderTopColor','borderTopWidth','height'];const read=s=>{const c=getComputedStyle(document.querySelector(s));return props.map(p=>c[p]);};return [read('#reference tr:last-child td'),read('.review-professor-table tbody tr:first-child td'),read('#reference th'),read('.review-professor-table .table-header-row th')];});
+   assert.deepEqual(styles[0],styles[1]);assert.deepEqual(styles[2],styles[3]);
+   await page.locator("#reference").evaluate(e=>e.remove());
+
    const fixed=table.locator('tbody tr:first-child .sticky-col');
    const before=await fixed.evaluateAll(cells=>cells.map(c=>c.getBoundingClientRect().x));
    const scroll=page.locator('.review-table-scroll');

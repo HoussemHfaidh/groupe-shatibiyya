@@ -67,7 +67,7 @@ window.Review=(()=>{
  function professorTable(currentWeek){
   const weeks=[currentWeek,...Object.values(data).filter(w=>w.id!==currentWeek.id)].sort((a,b)=>a.startDate.localeCompare(b.startDate));
   const names=[...new Set([...ctx.students,...weeks.flatMap(w=>w.students||[])])];
-  const table=el('table','','review-table review-professor-table tracking-table');
+  const table=el('table','','review-professor-table tracking-table');
   table.style.setProperty('--week-count',weeks.length);
   const columns=['index-col','name-col','completion-col','percent-col',...weeks.map(()=>'week-col')];
   const colgroup=el('colgroup');columns.forEach(c=>colgroup.append(el('col','',c)));
@@ -80,20 +80,20 @@ window.Review=(()=>{
    return sum;
   },{done:0,total:0});
   const thead=el('thead'),rate=el('tr'),head=el('tr');
-  rate.className='week-percent-row';
-  columns.slice(0,4).forEach((c,i)=>{const th=el('th',i===1?'المشاركة الأسبوعية':'',`${c}${i<3?' sticky-col':''}`);rate.append(th);});
-  for(const w of weeks)rate.append(el('th',percent((w.students||[]).filter(n=>ReviewModel.recordFor(w,n)).length,(w.students||[]).length)));
+  rate.className='week-percent-row';head.className='table-header-row';
+  columns.slice(0,4).forEach((c,i)=>{const th=el('th','',`${c}${i<3?' sticky-col':''}`);rate.append(th);});
+  for(const w of weeks)rate.append(el('td',percent((w.students||[]).filter(n=>ReviewModel.recordFor(w,n)).length,(w.students||[]).length)));
   ['#','الاسم','نسبة المراجعة','نسبة عدم المراجعة',...weeks.map(w=>w.startDate.split('-').reverse().join('/'))].forEach((t,i)=>{const th=el('th',t,`${columns[i]}${i<3?' sticky-col':''}`);th.scope='col';head.append(th);});
   thead.append(rate,head);table.append(thead);const body=el('tbody');let allDone=0,allTotal=0;
   names.forEach((name,index)=>{
    const row=el('tr'),stat=stats(name);allDone+=stat.done;allTotal+=stat.total;
-   const label=el('th',name);label.scope='row';row.append(el('td',String(index+1)),label,el('td',percent(stat.done,stat.total)),el('td',percent(stat.total-stat.done,stat.total)));
+   const label=el('td',name);row.append(el('td',String(index+1)),label,el('td',percent(stat.done,stat.total)),el('td',percent(stat.total-stat.done,stat.total)));
    Array.from(row.children).forEach((cell,i)=>cell.className=`${columns[i]}${i<3?' sticky-col':''}`);
    for(const w of weeks){const r=ReviewModel.recordFor(w,name),enrolled=(w.students||[]).includes(name);let color='',title='لم يشارك بعد';
     if(!enrolled)title='غير مسجل في هذا الأسبوع';
     else if(r){color=!r.complete?'review-yellow':r.part===1?'review-orange':'review-green';title=!r.complete?`القسم ${r.part===1?'الأول':'الثاني'} غير مكتمل`:r.part===1?'القسم الأول':'القسم الثاني مكتمل';}
     else if(!ReviewModel.active(w)||w.missed?.includes(name)){color='review-red';title='لم يشارك';}
-    const cell=el('td',r?'X':'—',color);if(enrolled){const button=el('button',r?'X':'—','review-cell-button');button.type='button';button.setAttribute('aria-label',`${name} · ${w.startDate} · ${title} · تعديل`);button.onclick=()=>editProfessor(w.id,name);cell.replaceChildren(button);}cell.title=title;cell.setAttribute('aria-label',`${name}: ${title}`);row.append(cell);
+    const cell=el('td',r?'X':'—',color);if(enrolled){const button=el('button',r?'X':'—','cell-button');button.type='button';button.setAttribute('aria-label',`${name} · ${w.startDate} · ${title} · تعديل`);button.onclick=()=>editProfessor(w.id,name);cell.replaceChildren(button);}cell.title=title;cell.setAttribute('aria-label',`${name}: ${title}`);row.append(cell);
    }body.append(row);
   });table.append(body);
   const foot=el('tfoot'),total=el('tr'),label=el('th','المجموعة');total.append(el('td',''),label,el('td',percent(allDone,allTotal)),el('td',percent(allTotal-allDone,allTotal)));for(const w of weeks)total.append(el('td',''));Array.from(total.children).forEach((cell,i)=>cell.className=`${columns[i]}${i<3?' sticky-col':''}`);foot.append(total);table.append(foot);

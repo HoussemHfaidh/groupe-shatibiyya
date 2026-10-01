@@ -209,10 +209,13 @@ window.Jam = (() => {
       .filter(item => JamModel.started(item) && item.startDate && item.startDate <= (currentAssignment?.startDate || "9999"))
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
     const table = el("table", "", "tracking-table jam-tracking-table");
+    table.style.setProperty('--week-count', assignments.length);
+    const columns=['index-col','name-col','completion-col',...assignments.map(()=>'week-col')];
+    const columnClass=i=>`${columns[i]}${i<3?' sticky-col':''}`;
     table.append(el("caption", "متابعة واجب الجمع"));
-    const head = el("thead"), row = el("tr");
-    ["#", "الاسم", "نسبة الإنجاز", ...assignments.map(a => `${a.number} · ${a.startDate}`)].forEach(label => {
-      const cell = el("th", label); cell.scope = "col"; row.append(cell);
+    const head = el("thead"), row = el("tr", "", "table-header-row");
+    ["#", "الاسم", "نسبة الإنجاز", ...assignments.map(a => `${a.number} · ${a.startDate}`)].forEach((label,i) => {
+      const cell = el("th", label,columnClass(i)); cell.scope = "col"; row.append(cell);
     });
     head.append(row); table.append(head);
     const names = [...new Set([...participants(context), ...assignments.flatMap(a => a.students)])];
@@ -222,7 +225,7 @@ window.Jam = (() => {
       const applicable = assignments.filter(a => JamModel.started(a) && a.students.includes(name));
       const done = applicable.filter(a => (a.confirmations || []).some(c => c.student === name)).length;
       row.append(el("td", String(index + 1)));
-      const label = el("th", name); label.scope = "row"; row.append(label);
+      const label = el("td", name); row.append(label);
       row.append(el("td", applicable.length ? `${Math.round(done / applicable.length * 100)}%` : "—"));
       assignments.forEach(a => {
         const confirmed = (a.confirmations || []).find(c => c.student === name);
@@ -230,7 +233,7 @@ window.Jam = (() => {
         const cell = el("td", !included ? "—" : confirmed ? `تم · ${a.verses[confirmed.verseIndex]}` : "لم يتم", included ? confirmed ? "jam-done" : "jam-missed" : "");
         if (confirmed) {
           cell.title = `اعتمد: ${confirmed.validator}`;
-          const trigger = el("button", cell.textContent, "review-cell-button");
+          const trigger = el("button", cell.textContent, "cell-button");
           trigger.type = "button";
           trigger.setAttribute("aria-label", `تصحيح الآية — ${name} — ${a.number}`);
           trigger.setAttribute("aria-expanded", "false");
@@ -261,11 +264,12 @@ window.Jam = (() => {
         }
         row.append(cell);
       });
+      Array.from(row.children).forEach((cell,i)=>cell.className += ` ${columnClass(i)}`);
       body.append(row);
     });
     table.append(body);
     const foot = el("tfoot"), totals = el("tr");
-    const label = el("th", "نسبة إنجاز المجموعة"); label.colSpan = 3; totals.append(label);
+    totals.append(el("td", "",columnClass(0)),el("td", "المجموعة",columnClass(1)),el("td", "",columnClass(2)));
     assignments.forEach(a => totals.append(el("td", JamModel.started(a) ? `${Math.round((a.confirmations || []).length / (a.students.length || 1) * 100)}%` : "—")));
     foot.append(totals); table.append(foot); report.append(table);
   }
