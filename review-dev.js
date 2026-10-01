@@ -64,9 +64,13 @@ window.Review=(()=>{
    return next;
   });
  }
+ function tableStudents(students){
+  if(!['group2','login-test-group2'].includes(ctx.storageId))return students;
+  return students.filter(name=>name.normalize('NFKC').replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/ى/g,'ي').trim().replace(/\s+/g,' ')!=='محمد الصادق الكشباطي');
+ }
  function professorTable(currentWeek){
-  const weeks=[currentWeek,...Object.values(data).filter(w=>w.id!==currentWeek.id)].sort((a,b)=>a.startDate.localeCompare(b.startDate));
-  const names=[...new Set([...ctx.students,...weeks.flatMap(w=>w.students||[])])];
+  const weeks=[currentWeek,...Object.values(data).filter(w=>w.id!==currentWeek.id)].sort((a,b)=>a.startDate.localeCompare(b.startDate)).map(w=>({...w,students:tableStudents(w.students||[])}));
+  const names=[...new Set([...tableStudents(ctx.students),...weeks.flatMap(w=>w.students||[])])];
   const table=el('table','','review-professor-table tracking-table');
   table.style.setProperty('--week-count',weeks.length);
   const columns=['index-col','name-col','completion-col','percent-col',...weeks.map(()=>'week-col')];
@@ -112,7 +116,7 @@ window.Review=(()=>{
    const toggle=el('button',studentView?'عرض الجدول':'عرض حسب الطالب','secondary');toggle.type='button';toggle.onclick=()=>{studentView=!studentView;draw();};list.append(toggle);
    if(studentView){
     const selector=el('select');selector.setAttribute('aria-label','تفاصيل الطالب');
-    const names=[...new Set([...ctx.students,...Object.values(data).flatMap(x=>x.students||[])])];const recordsFor=n=>Object.values(data).flatMap(w=>(w.records||[]).filter(r=>r.student===n));
+    const names=tableStudents([...new Set([...ctx.students,...Object.values(data).flatMap(x=>x.students||[])])]);const recordsFor=n=>Object.values(data).flatMap(w=>(w.records||[]).filter(r=>r.student===n));
     names.forEach(n=>selector.add(new Option(`${n} · ${recordsFor(n).length} مراجعات`,n)));
     if(!names.includes(selectedDetail))selectedDetail=names.find(n=>recordsFor(n).some(r=>r.durationMinutes!=null))||names.find(n=>recordsFor(n).length)||names[0]||'';
     selector.value=selectedDetail;selectedDetail=selector.value;selector.onchange=()=>{selectedDetail=selector.value;draw();};list.append(selector);

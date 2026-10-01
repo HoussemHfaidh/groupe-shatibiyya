@@ -639,6 +639,12 @@ function statusLabel(status) {
   return "فارغ";
 }
 
+// Table-only membership: preserve the central roster and other activities.
+function recitationTableStudents() {
+  if (currentGroupId !== "group2") return state.students;
+  return state.students.filter(name => normalizeArabic(name) !== normalizeArabic("محمد الصادق الكشباطي"));
+}
+
 function studentCompletion(studentName) {
   const filledWeeks = state.weeks.filter((week) => {
     const status = getStatus(studentName, week.id);
@@ -653,11 +659,11 @@ function studentMissing(studentName) {
 }
 
 function weekCompletion(weekId) {
-  const done = state.students.filter((student) => {
+  const done = recitationTableStudents().filter((student) => {
     const status = getStatus(student, weekId);
     return status === "done" || status === "makeup";
   }).length;
-  return state.students.length ? Math.round((done / state.students.length) * 100) : 0;
+  return recitationTableStudents().length ? Math.round((done / recitationTableStudents().length) * 100) : 0;
 }
 
 function renderWeekSelect(selectedWeekId) {
@@ -714,7 +720,7 @@ function renderTable() {
   });
   table.append(header);
 
-  state.students.forEach((student, index) => {
+  recitationTableStudents().forEach((student, index) => {
     const row = document.createElement("tr");
     row.append(emptyCell("td", String(index + 1), "sticky-col index-col"));
     row.append(emptyCell("td", student, "sticky-col name-col"));
@@ -805,15 +811,15 @@ function headerCell(text, className = "") {
 }
 
 function averageCompletion() {
-  if (!state.students.length) return 0;
-  const total = state.students.reduce((sum, student) => sum + studentCompletion(student), 0);
-  return Math.round(total / state.students.length);
+  if (!recitationTableStudents().length) return 0;
+  const total = recitationTableStudents().reduce((sum, student) => sum + studentCompletion(student), 0);
+  return Math.round(total / recitationTableStudents().length);
 }
 
 function averageMissing() {
-  if (!state.students.length) return 0;
-  const total = state.students.reduce((sum, student) => sum + studentMissing(student), 0);
-  return Math.round(total / state.students.length);
+  if (!recitationTableStudents().length) return 0;
+  const total = recitationTableStudents().reduce((sum, student) => sum + studentMissing(student), 0);
+  return Math.round(total / recitationTableStudents().length);
 }
 
 function renderChain() {
@@ -1275,7 +1281,7 @@ function createNextWeek() {
 function exportCsv() {
   const rows = [];
   rows.push(["الرقم", "الاسم", "نسبة التسميع", "نسبة عدم التسميع", ...state.weeks.map(weekLabel)]);
-  state.students.forEach((student, index) => {
+  recitationTableStudents().forEach((student, index) => {
     rows.push([
       index + 1,
       student,
@@ -1359,7 +1365,7 @@ function renderReportCanvas() {
   const headerHeight = 42;
   const rowHeight = 28;
   const totalWidth = columns.reduce((sum, column) => sum + column.width, 0);
-  const totalHeight = titleHeight + percentHeight + headerHeight + rowHeight * (state.students.length + 1);
+  const totalHeight = titleHeight + percentHeight + headerHeight + rowHeight * (recitationTableStudents().length + 1);
   const scale = Math.min(2, window.devicePixelRatio || 1);
   const canvas = document.createElement("canvas");
   canvas.width = totalWidth * scale;
@@ -1381,7 +1387,7 @@ function renderReportCanvas() {
   drawHeaderRow(context, positionedColumns, y, headerHeight);
   y += headerHeight;
 
-  state.students.forEach((student, index) => {
+  recitationTableStudents().forEach((student, index) => {
     drawStudentRow(context, positionedColumns, student, index, y, rowHeight);
     y += rowHeight;
   });
