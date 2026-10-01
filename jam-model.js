@@ -1,5 +1,22 @@
 /* Shared rules for واجب الجمع, used by the browser and local server. */
 (function (root) {
+  // Activity-specific membership; the central group roster remains unchanged.
+  function participates(name, storageId) {
+    if (!['group1', 'login-test-group1'].includes(storageId)) return true;
+    const normalized = String(name).normalize('NFKC').replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/ى/g, 'ي').trim().replace(/\s+/g, ' ');
+    return normalized !== 'محمد الصادق الكشباطي';
+  }
+  function participants(students, storageId) {
+    return students.filter(name => participates(name, storageId));
+  }
+  function projectParticipants(store, storageId) {
+    if (!['group1', 'login-test-group1'].includes(storageId)) return store;
+    return Object.fromEntries(Object.entries(store).map(([id, assignment]) => [id, {
+      ...assignment,
+      students: participants(assignment.students || [], storageId),
+      confirmations: (assignment.confirmations || []).filter(c => participates(c.student, storageId)),
+    }]));
+  }
   function create(students, title, text, id) {
     const verses = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
     if (!students.length || verses.length !== students.length) throw new Error("عدد الآيات يجب أن يساوي عدد الطلاب.");
@@ -86,7 +103,7 @@
     if (confirmations.some(item => item.student !== student && item.verseIndex === verseIndex)) throw new Error("هذه الآية مستعملة. اختر آية متاحة.");
     return { ...assignment, confirmations: confirmations.map(item => item === existing ? { ...item, verseIndex } : item) };
   }
-  const api = { started, create, confirm, correctVerse, weeklyWindow, active, current, ensureWeek };
+  const api = { participates, participants, projectParticipants, started, create, confirm, correctVerse, weeklyWindow, active, current, ensureWeek };
   if (typeof module !== "undefined") module.exports = api;
   else root.JamModel = api;
 })(globalThis);

@@ -71,3 +71,26 @@ assert.equal(started(first), true);
 assert.equal(started(next[id45]), true);
 assert.equal(started(current(next, schedule, boundary)), false);
 console.log('✓ Only approved duties are open; empty weeks do not inherit activation');
+
+// Exclude this student only from group 1's Jam membership and statistics.
+{
+ const {participants, projectParticipants, ensureWeek}=require('../jam-model.js');
+ const excluded='محمد الصادق الكشباطى';
+ const roster=['أحمد',excluded,'علي'];
+ const store={past:{students:roster,verses:['1','2','3'],confirmations:[{student:excluded,verseIndex:0},{student:'أحمد',verseIndex:2,validator:excluded}]}};
+ const original=structuredClone(store);
+ const projected=projectParticipants(store,'group1');
+ assert.deepEqual(participants(roster,'group1'),['أحمد','علي']);
+ assert.deepEqual(participants(['محمد الصادق الكشباطي'],'group1'),[]);
+ assert.deepEqual(projected.past.students,['أحمد','علي']);
+ assert.equal(projected.past.confirmations.length/projected.past.students.length,0.5);
+ assert.equal(projected.past.confirmations[0].verseIndex,2);
+ assert.equal(projected.past.confirmations[0].validator,excluded);
+ assert.deepEqual(store,original);
+ assert.strictEqual(projectParticipants(store,'group2'),store);
+ assert.deepEqual(participants(roster,'group2'),roster);
+ const schedule={startDate:'2026-09-26',number:1,timeZone:'Europe/Paris'};
+ const next=ensureWeek(projected,participants(roster,'group1'),schedule,new Date('2026-10-01T10:00:00Z'));
+ assert.deepEqual(next['week-2026-09-26'].students,['أحمد','علي']);
+ console.log('✓ Jam-only group 1 exclusion: history, totals, future weeks, group 2 unchanged');
+}

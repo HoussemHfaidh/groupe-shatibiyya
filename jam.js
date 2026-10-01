@@ -15,6 +15,7 @@ window.Jam = (() => {
     wrapper.append(el("span", label), input);
     return wrapper;
   }
+  const participants = ctx => JamModel.participants(ctx.students, ctx.storageId);
   function mount(ctx) {
     context = ctx;
     if (!panel) build();
@@ -47,7 +48,7 @@ window.Jam = (() => {
       const id = selected, student = studentSelect.value, verse = Number(verseSelect.value);
       const actor = { role: context.role, name: context.name };
       mutate(store => {
-        if (actor.role === "professor") store = JamModel.ensureWeek(store, context.students, context.schedule);
+        if (actor.role === "professor") store = JamModel.ensureWeek(store, participants(context), context.schedule);
         if (JamModel.current(store, context.schedule)?.id !== id) throw new Error("انتهى وقت هذا الواجب. حدّث القائمة.");
         return { ...store, [id]: JamModel.confirm(store[id], window.RosterModel?.resolve(student,context.studentAliases) || student, verse, {...actor,name:window.RosterModel?.resolve(actor.name,context.studentAliases) || actor.name}) };
       });
@@ -118,8 +119,8 @@ window.Jam = (() => {
   async function read(ctx) {
     await window.Roster?.refresh(ctx);
     const project = snapshot => {
-      const canonical=window.Roster?.project(snapshot.value,ctx) || snapshot.value;
-      const value=JamModel.ensureWeek(canonical,ctx.students,ctx.schedule);
+      const canonical=JamModel.projectParticipants(window.Roster?.project(snapshot.value,ctx) || snapshot.value,ctx.storageId);
+      const value=JamModel.ensureWeek(canonical,participants(ctx),ctx.schedule);
       const current=JamModel.current(canonical,ctx.schedule);
       return {...snapshot,value,rosterChanged:JamModel.started(current) && value!==canonical};
     };
@@ -171,7 +172,7 @@ window.Jam = (() => {
   function draw() {
     if (!panel || !context) return;
     const oldStudent = studentSelect.value, oldVerse = verseSelect.value;
-    const candidate = JamModel.current(JamModel.ensureWeek(data, context.students, context.schedule), context.schedule);
+    const candidate = JamModel.current(JamModel.ensureWeek(data, participants(context), context.schedule), context.schedule);
     const assignment = context.role === "professor" || JamModel.started(candidate) ? candidate : null;
     const week = JamModel.weeklyWindow(context.schedule);
     selected = assignment?.id || "";
@@ -196,7 +197,7 @@ window.Jam = (() => {
     if ([...studentSelect.options].some(o => o.value === oldStudent)) studentSelect.value = oldStudent;
     if ([...verseSelect.options].some(o => o.value === oldVerse)) verseSelect.value = oldVerse;
     if (context.role === "professor") drawReport(assignment);
-    const allowed = (context.role === "professor" || (context.students.includes(context.name) && confirmations.some(c => c.student === context.name))) && context.ready !== false;
+    const allowed = (context.role === "professor" || (participants(context).includes(context.name) && confirmations.some(c => c.student === context.name))) && context.ready !== false;
     form.hidden = !assignment;
     [...form.elements].forEach(control => { control.disabled = busy || !allowed || !studentSelect.options.length || !verseSelect.options.length; });
 
@@ -214,7 +215,7 @@ window.Jam = (() => {
       const cell = el("th", label); cell.scope = "col"; row.append(cell);
     });
     head.append(row); table.append(head);
-    const names = [...new Set([...context.students, ...assignments.flatMap(a => a.students)])];
+    const names = [...new Set([...participants(context), ...assignments.flatMap(a => a.students)])];
     const body = el("tbody");
     names.forEach((name, index) => {
       const row = el("tr");
