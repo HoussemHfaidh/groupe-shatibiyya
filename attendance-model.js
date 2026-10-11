@@ -34,6 +34,7 @@
     return rows;
   }
   const aliases = {
+    email: ['email', 'e-mail', 'adresse e-mail'],
     name: ['name (original name)', 'name', 'nom (nom original)', 'nom'],
     join: ['join time', 'heure de connexion', 'heure d’arrivée', "heure d'arrivée"],
     leave: ['leave time', 'heure de départ', 'heure de déconnexion'],
@@ -58,7 +59,8 @@
         const minutes = Number(String(rawMinutes ?? '').replace(',', '.'));
         const join = time(row[columns.join]), leave = time(row[columns.leave]);
         if (!name || rawMinutes === undefined || String(rawMinutes).trim() === '' || !Number.isFinite(minutes) || minutes < 0 || !Number.isFinite(join) || !Number.isFinite(leave) || leave < join) throw Error('بيانات ناقصة أو مدة غير صالحة');
-        result.push({ name, join, leave, minutes });
+        const email=String(row[columns.email] || '').trim().toLowerCase();
+        result.push({ name, join, leave, minutes, ...(email?{email}:{}) });
       } catch (e) { throw Error(`السطر ${header + index + 2}: ${e.message}`); }
     });
     if (!result.length) throw Error('لا توجد مشاركات في التقرير');
@@ -75,12 +77,39 @@
   const milliseconds = intervals => union(intervals).reduce((sum, [a,b]) => sum + b-a, 0);
   const minutes = intervals => milliseconds(intervals)/60000;
   function calculate(input, teacherName = 'Gharbi', options = {}) {
+    const effectiveAliases={...options.aliases};
+    for(const r of input){
+      const base=matching.personName(r.name),sourceKey=matching.compact(r.name),baseKey=matching.compact(base);
+      if(base===r.name || !baseKey || Object.hasOwn(effectiveAliases,sourceKey))continue;
+      const peers=input.filter(p=>matching.compact(matching.personName(p.name))===baseKey);
+      if(!peers.some(p=>matching.compact(p.name)===baseKey))continue;
+      if(new Set(peers.map(p=>p.email).filter(Boolean)).size>1)continue;
+      const resolved=matching.resolve(base,options.students,options.aliases);
+      if(resolved.method==='unlisted'||(!resolved.name&&resolved.candidates.length))continue;
+      const target=resolved.name ? {customName:resolved.name} : {customName:base};
+      effectiveAliases[sourceKey]=target;
+      if(!Object.hasOwn(effectiveAliases,baseKey))effectiveAliases[baseKey]=target;
+    }
+    // An exact shared email can link different device names, unless it contradicts
+    // distinct roster identities or a professor's explicit matching decisions.
+    const byEmail=new Map();
+    for(const r of input)if(r.email){const email=String(r.email).trim().toLowerCase();byEmail.set(email,[...(byEmail.get(email)||[]),r]);}
+    for(const peers of byEmail.values()){
+      if(peers.length<2||peers.some(r=>matching.compact(r.name)===matching.compact(teacherName)))continue;
+      const resolved=peers.map(r=>matching.resolve(r.name,options.students,options.aliases));
+      if(resolved.some(r=>r.method==='unlisted'||(!r.name&&r.candidates.length)))continue;
+      const identities=[...new Set(resolved.map(r=>r.name).filter(Boolean))];
+      if(identities.length>1)continue;
+      if(peers.some(r=>Object.hasOwn(options.aliases||{},matching.compact(r.name))))continue;
+      const target=identities[0]||matching.personName(peers[0].name);
+      for(const r of peers)effectiveAliases[matching.compact(r.name)]={customName:target};
+    }
     const grouped = new Map();
     const resolutions = Object.create(null);
     const excluded = new Set(options.excludedNames || []);
     for (const r of input) {
       const isTeacher = matching.compact(r.name) === matching.compact(teacherName);
-      const resolution = isTeacher ? {name:r.name,method:'teacher'} : matching.resolve(r.name, options.students, options.aliases);
+      const resolution = isTeacher ? {name:r.name,method:'teacher'} : matching.resolve(r.name, options.students, effectiveAliases);
       resolutions[r.name] = resolution;
       if (!isTeacher && excluded.has(matching.compact(r.name))) { resolutions[r.name] = {...resolution, method:'excluded'}; continue; }
       const key = isTeacher ? 'teacher' : resolution.name ? `student:${matching.compact(resolution.name)}` : `zoom:${matching.compact(r.name)}`;
@@ -146,6 +175,29 @@
     const value = session.rawRecords ? recalculateSession(session,{students,aliases:nextAliases}) : {...session,participants:session.participants.map(p => p.key === participantKey ? {...p,name,sourceNames:p.sourceNames || [p.name]} : p)};
     return {value,aliases:nextAliases};
   }
+  function mergeParticipants(session, sourceKey, targetKey, aliases={}, students=[]){
+    if(!session.rawRecords)throw Error('أعد استيراد الملف الأصلي لدمج الاتصالات بدقة.');
+    const source=session.participants.find(p=>p.key===sourceKey),target=session.participants.find(p=>p.key===targetKey);
+    if(!source||!target||sourceKey===targetKey)throw Error('اختر مشاركين مختلفين للدمج.');
+    const nextAliases={...aliases},before={};
+    for(const name of [...(source.sourceNames||[source.name]),...(target.sourceNames||[target.name])]){
+      const key=matching.compact(name);before[key]=Object.hasOwn(aliases,key)?aliases[key]:null;
+      nextAliases[key]={customName:target.name};
+    }
+    const value=recalculateSession(session,{students,aliases:nextAliases});
+    value.mergeUndo={before,after:Object.fromEntries(Object.keys(before).map(k=>[k,nextAliases[k]]))};
+    return {value,aliases:nextAliases};
+  }
+  function undoMerge(session,aliases={},students=[]){
+    if(!session.mergeUndo)throw Error('لا يوجد دمج للتراجع عنه.');
+    const nextAliases={...aliases};
+    for(const [key,prior]of Object.entries(session.mergeUndo.before)){
+      if(JSON.stringify(aliases[key])!==JSON.stringify(session.mergeUndo.after[key]))throw Error('تغيرت الأسماء بعد الدمج. صحّح المطابقة يدويًا.');
+      if(prior===null)delete nextAliases[key];else nextAliases[key]=prior;
+    }
+    const value=recalculateSession(session,{students,aliases:nextAliases});delete value.mergeUndo;
+    return {value,aliases:nextAliases};
+  }
   function formatPercent(ratio) {
     const value=ratio*100;
     for(let digits=2;digits<=6;digits++) {
@@ -155,7 +207,7 @@
     }
     return value<70 ? '<70%' : '<100%';
   }
-  const api = { formatPercent, normalize, time, parseCSV, records, calculate, displayTime, displayDate, union, migrateFlags, recalculateSession, removeParticipant, restoreParticipant, renameParticipant };
+  const api = { mergeParticipants, undoMerge, formatPercent, normalize, time, parseCSV, records, calculate, displayTime, displayDate, union, migrateFlags, recalculateSession, removeParticipant, restoreParticipant, renameParticipant };
   if (typeof module !== 'undefined') module.exports = api;
   else root.AttendanceModel = api;
 })(typeof window === 'undefined' ? globalThis : window);

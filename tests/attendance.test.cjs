@@ -118,3 +118,36 @@ test('percentage uses professor actual duration, never rounded Zoom minutes, and
  const raw=[record('Gharbi',60),record('Exact',42)];raw[0].minutes=61;raw[1].minutes=43;
  assert.equal(m.calculate(raw).participants[0].ratio,.7);
 });
+
+test('device suffix reconnects merge without a roster, but ambiguous identities and different emails do not',()=>{
+ const rows=[record('Gharbi',100),record('مالك',30),record('مالك (Samsung SM-A165F)',60,40)];
+ const result=m.calculate(rows);assert.equal(result.participants.length,1);assert.equal(result.participants[0].minutes,90);assert.equal(result.participants[0].connections,2);
+ assert.equal(m.calculate(rows,'Gharbi',{students:['مالك الأول','مالك الثاني']}).participants.length,2);
+ assert.equal(m.calculate(rows.map((r,i)=>({...r,email:i===1?'a@example.test':i===2?'b@example.test':''}))).participants.length,2);
+ const compact=require('../attendance-matching').compact;
+ assert.equal(m.calculate(rows,'Gharbi',{aliases:{[compact(rows[2].name)]:''}}).participants.length,2);
+ assert.equal(m.calculate([record('Gharbi',100),record('مالك',30),record('مالك (أحمد)',60,40)]).participants.length,2);
+});
+test('manual merge unions overlapping intervals, preserves flags and originals, learns aliases and can be undone',()=>{
+ const raw=[record('Gharbi',100),record('A',60),record('B',60,40)];
+ const session={...m.calculate(raw),id:'one',flags:{'zoom:a':{excused:true},'zoom:b':{unexcused:true}}};
+ const result=m.mergeParticipants(session,'zoom:a','zoom:b');
+ assert.equal(result.value.participants.length,1);assert.equal(result.value.participants[0].minutes,100);assert.equal(result.value.participants[0].ratio,1);
+ assert.equal(result.value.flags['student:b'].excused,true);assert.equal(result.value.flags['student:b'].unexcused,true);
+ assert.deepEqual(result.value.rawRecords,raw);assert.equal(session.participants.length,2);
+ assert.equal(m.calculate(raw,'Gharbi',{aliases:result.aliases}).participants.length,1);
+ const undo=m.undoMerge(result.value,result.aliases);assert.equal(undo.value.participants.length,2);assert.deepEqual(undo.aliases,{});
+ assert.throws(()=>m.mergeParticipants(session,'teacher','zoom:b'));
+ assert.throws(()=>m.mergeParticipants({...session,rawRecords:null},'zoom:a','zoom:b'));
+});
+
+test('shared email links different device names but never overrides different students or manual choices',()=>{
+ const input=[record('Gharbi',100),{...record('Samira',40),email:'person@example.test'},{...record('My phone',50,50),email:'person@example.test'}];
+ assert.equal(m.calculate(input).participants.length,1);
+ assert.equal(m.calculate(input,'Gharbi',{students:['Samira','My phone']}).participants.length,2);
+ assert.equal(m.calculate(input,'Gharbi',{aliases:{myphone:''}}).participants.length,2);
+ for(const name of ['سارة','Ahmed','Jean']){
+  const result=m.calculate([record('Gharbi',100),record(name,30),record(name+' (iPhone)',50,40)]);
+  assert.equal(result.participants.length,1);assert.equal(result.participants[0].minutes,80);
+ }
+});

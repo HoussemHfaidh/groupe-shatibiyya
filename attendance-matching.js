@@ -5,6 +5,8 @@
     .replace(/[\u0300-\u036f\u064b-\u065f\u0670\u0640]/g, '')
     .replace(/[أإآٱ]/g, 'ا').replace(/ء/g, '').replace(/[ىی]/g, 'ي').replace(/ک/g, 'ك').replace(/ة/g, 'ه')
     .replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
+  // Strip only a trailing, recognizable device label, never arbitrary parentheses.
+  const personName = value => String(value ?? '').replace(/\s*\((?:Samsung\b[^()]*|SM-[A-Z0-9-]+|iPhone\b[^()]*|iPad\b[^()]*|Android\b[^()]*)\)\s*$/i,'').trim();
   const compact = value => clean(value).replace(/ /g, '');
   // Common transliterations of given names, not assignments to student identities.
   const givenNames = {
@@ -45,6 +47,8 @@
     }
     if (remembered === '') return { name:null, method:'unlisted', candidates:[] };
     if (names.includes(remembered)) return { name:remembered, method:'confirmed', candidates:[remembered] };
+    const base=personName(name);
+    if(remembered===undefined && base!==String(name).trim()){const device=resolve(base,roster,learned);if(device.name)return {...device,method:'device'};}
     const exact = names.filter(n => compact(n) === key);
     if (exact.length === 1) return {name:exact[0], method:'exact', candidates:exact};
     const source = tokens(name), signature = source.join('').replace(/(.)\1+/g, '$1');
@@ -69,6 +73,6 @@
     const certain = remembered === undefined && top && (top.score >= .94 || (source.length >= 2 && top.score >= .88)) && (!second || top.score-second.score >= .12);
     return {name:certain ? top.name : null, method:certain ? 'matched' : 'review', candidates:ranked.slice(0,3).map(c => c.name)};
   }
-  const api = { clean, compact, resolve, tokens };
+  const api = { personName, clean, compact, resolve, tokens };
   if (typeof module !== 'undefined') module.exports = api; else root.AttendanceMatching = api;
 })(typeof window === 'undefined' ? globalThis : window);

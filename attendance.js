@@ -40,7 +40,7 @@ window.Attendance = (() => {
     });
     preview = el('div', '', 'attendance-preview'); previewImage = el('img'); previewImage.alt = 'جدول الحضور كاملا بجميع المشاركين والحالات'; preview.append(previewImage);
     matchingBox = el('details', '', 'attendance-matching');
-    editor = el('details', '', 'attendance-editor'); editor.append(el('summary', 'تعديل الأسماء وحالات الخروج أو حذف طالب'), report);
+    editor = el('details', '', 'attendance-editor'); editor.append(el('summary', 'تصحيح الأسماء ودمج الاتصالات وحالات الخروج'), report);
     dialog = el('dialog', '', 'attendance-dialog');
     const close = el('button', 'إغلاق', 'secondary'); close.type = 'button'; close.onclick = () => dialog.close();
     dialogImage = el('img'); dialogImage.alt = previewImage.alt; dialog.append(close, dialogImage); panel.append(dialog);
@@ -76,7 +76,7 @@ window.Attendance = (() => {
       if (key !== originalKey) return;
       const id = `${result.teacher.join}-${result.teacher.leave}`;
       const previous = data.find(s => s.id === id);
-      let session = { ...result, id, filename: uploaded.name, flags: AttendanceModel.migrateFlags(previous, result), excludedNames:previous?.excludedNames || [] };
+      let session = { ...result, id, filename: uploaded.name, flags: AttendanceModel.migrateFlags(previous, result), excludedNames:previous?.excludedNames || [], ...(previous?.mergeUndo?{mergeUndo:previous.mergeUndo}:{}) };
       if (session.excludedNames.length) session = AttendanceModel.recalculateSession(session, options);
       const next = [session, ...data.filter(s => s.id !== id)].sort((a, b) => b.teacher.join - a.teacher.join);
       if (!persist(next)) return;
@@ -215,11 +215,23 @@ window.Attendance = (() => {
           const updated = AttendanceModel.removeParticipant(current,p.key,{students:ctx.students || [],aliases:learned});
           if (saveSession(updated)) {matchingBox.open = true; status.textContent = 'تم حذف السطر من هذه الجلسة والصورة. يمكنك استعادته من قائمة المحذوفين.';}
         };
-        management.append(form,remove);
+        const mergeSelect=el('select');mergeSelect.setAttribute('aria-label',`دمج ${p.name} مع`);
+        mergeSelect.add(new Option('اختر المشارك المطابق',''));
+        current.participants.filter(other=>other.key!==p.key).forEach(other=>mergeSelect.add(new Option(other.name,other.key)));
+        const merge=el('button','دمج الاتصالات','secondary');merge.type='button';merge.disabled=!current.rawRecords;merge.setAttribute('aria-label',`دمج اتصالات ${p.name}`);
+        merge.onclick=()=>{
+          if(busy||!mergeSelect.value)return;
+          const target=current.participants.find(other=>other.key===mergeSelect.value);
+          if(!confirm(`دمج ${p.name} مع ${target.name}؟ ستُجمع فترات الحضور دون تكرار التداخل، وتُحفظ المطابقة للاستيرادات القادمة في هذه المجموعة.`))return;
+          try{const result=AttendanceModel.mergeParticipants(current,p.key,target.key,learned,ctx.students||[]);if(saveSession(result.value,result.aliases))status.textContent='تم الدمج وإعادة حساب الحضور. يمكنك التراجع عن آخر دمج.';}catch(e){status.textContent=e.message;}
+        };
+        management.append(form,mergeSelect,merge,remove);
       } else management.textContent = '—';
       row.append(management);
       body.append(row);
     });
+    if(current.rawRecords){const recalc=el('button','إعادة حساب الجلسة ومطابقة الاتصالات','secondary');recalc.type='button';recalc.onclick=()=>{try{if(saveSession(AttendanceModel.recalculateSession(current,{students:ctx.students||[],aliases:learned})))status.textContent='تم تحديث المطابقة وإعادة حساب الحضور.';}catch(e){status.textContent=e.message;}};summary.append(recalc);}
+    if(current.mergeUndo){const undo=el('button','التراجع عن آخر دمج','secondary');undo.type='button';undo.onclick=()=>{try{const result=AttendanceModel.undoMerge(current,learned,ctx.students||[]);if(saveSession(result.value,result.aliases))status.textContent='تم التراجع عن الدمج.';}catch(e){status.textContent=e.message;}};summary.append(undo);}
     report.append(table);
     renderPreview();
   }
