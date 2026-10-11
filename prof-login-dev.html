@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="khatma.css?v=dev-khatma-4" />
     <link rel="stylesheet" href="attendance.css?v=20260927-roster" />
     <link rel="stylesheet" href="matrix-dev.css?v=20260928-share" />
+    <link rel="stylesheet" href="student-admin.css?v=20261011-1">
   </head>
   <body>
     <header class="app-header">
@@ -103,12 +104,12 @@
           <div>
             <h2 id="setup-title">الإعدادات</h2>
             <p>
-              أضف الطلاب والأسابيع وحدد بداية ونهاية الأسبوع.
+              أضف الأسابيع وحدد بداية ونهاية الأسبوع. إدارة الطلاب متاحة في القائمة.
             </p>
           </div>
         </div>
 
-        <form id="studentForm" class="inline-form">
+        <form hidden id="studentForm" class="inline-form">
           <label class="field">
             <span>طالب جديد</span>
             <input id="studentName" type="text" autocomplete="off" placeholder="اسم الطالب" />
@@ -116,7 +117,7 @@
           <button type="submit" class="secondary">إضافة</button>
         </form>
 
-        <div id="studentList" class="student-list" aria-label="قائمة الطلاب"></div>
+        <div hidden id="studentList" class="student-list" aria-label="قائمة الطلاب"></div>
 
         <label class="field">
           <span>بداية ونهاية الأسبوع</span>
@@ -228,6 +229,8 @@
     <script src="matrix-model.js?v=20260928-admin"></script>
     <script src="matrix-share.js?v=20260928-share"></script>
     <script src="matrix-dev.js?v=20260929-live"></script>
-    <script src="app-dev.js?v=20261001-recitation-membership"></script>
+    <script src="student-admin-model.js?v=20261011-1"></script>
+    <script src="student-admin.js?v=20261011-1"></script>
+    <script src="app-dev.js?v=20261011-student-admin"></script>
   </body>
 </html>

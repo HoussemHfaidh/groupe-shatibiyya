@@ -336,6 +336,7 @@ async function loadConfigFromBackend() {
     if ((Array.isArray(config?.students) || config?.rosterInitialized) && config?.weeks?.length) {
       config=RosterModel.config(config);
       state.studentAliases=config.studentAliases;
+      state.loginEmails=config.loginEmails || {};
       state.rosterInitialized=true;
       state.rosterRevision=config.rosterRevision || 0;
       state.retiredStudents=config.retiredStudents || [];
@@ -388,7 +389,7 @@ async function syncConfigNow(snapshot=configSnapshot()) {
   catch(e){if(snapshot.key===currentStorageKey())updateBackendUi(e.message);return false;}
   finally{if(syncChains.get(snapshot.key)===work)syncChains.delete(snapshot.key);}
 }
-async function editRoster(action, oldName, newName) {
+async function editRoster(action, oldName, newName, email) {
   if(rosterBusy || !jamConfigReady) return false;
   rosterBusy=true;
   const storage=currentStorageKey(), url=getFirebaseUrl()?firebasePath(groupPath("config")):"";
@@ -400,10 +401,10 @@ async function editRoster(action, oldName, newName) {
     let current, etag;
     if(url){const response=await fetch(url,{cache:"no-store",headers:{"X-Firebase-ETag":"true"}});if(!response.ok)throw Error("تعذر تحميل قائمة الطلاب.");current=await response.json();etag=response.headers.get("ETag");if(!etag)throw Error("تعذر تأمين الحفظ.");}
     else current=await localRequest("/api/config");
-    const next=RosterModel.edit(current || {},action,oldName,newName);
+    const next=await StudentAdminModel.edit(current || {},action,oldName,newName,email,currentGroupId);
     if(url){const response=await fetch(url,{method:"PUT",headers:{"Content-Type":"application/json","if-match":etag},body:JSON.stringify(next)});if(response.status===412)throw Error("تغيرت البيانات عند مستخدم آخر. أعد المحاولة.");if(!response.ok)throw Error("تعذر حفظ قائمة الطلاب. لم يتم تطبيق التغيير.");}
     else await localRequest("/api/config",{method:"PUT",body:JSON.stringify(next)});
-    Object.assign(state,{students:next.students,studentAliases:next.studentAliases,retiredStudents:next.retiredStudents,rosterInitialized:true,rosterRevision:next.rosterRevision,statuses:next.statuses,readyOrder:next.readyOrder});
+    Object.assign(state,{loginEmails:next.loginEmails,students:next.students,studentAliases:next.studentAliases,retiredStudents:next.retiredStudents,rosterInitialized:true,rosterRevision:next.rosterRevision,statuses:next.statuses,readyOrder:next.readyOrder});
     state.submissions=RosterModel.project(state.submissions,next.studentAliases);
     localStorage.setItem(storage,JSON.stringify(state));
     render();updateBackendUi("تم تحديث قائمة المجموعة في جميع الأقسام. السجل السابق محفوظ.");return true;
@@ -975,6 +976,7 @@ function render(selectedWeekId) {
   sortWeeks();
   renderWeekSelect(selectedWeekId);
   renderSettings();
+  window.StudentAdmin?.mount({groupId:currentGroupId,config:state,ready:jamConfigReady,host:document.querySelector('main.layout'),edit:editRoster,error:()=>elements.syncStatus.textContent});
   renderStudentList();
   renderTable();
   renderChain();

@@ -233,7 +233,7 @@ async function profileForEmail(email) {
   if (window.SHATIBIYYA_EMAIL_ONLY_LOGIN && getFirebaseUrl()) {
     const emailHash = await sha256Hex(normalizedEmail);
     const storageIds = TEST_GROUP_STORAGE_IDS[currentDevMode] || TEST_GROUP_STORAGE_IDS.data;
-    for (const [groupId, storageId] of Object.entries(storageIds)) {
+    for (const [groupId, storageId] of Object.entries(storageIds).sort(([a],[b])=>Number(b===currentGroupId)-Number(a===currentGroupId))) {
       const profile = await firebaseRequest(`config/groups/${storageId}/loginEmails/${emailHash}`);
       if (profile) return { ...profile, groupId: profile.groupId || groupId };
     }
@@ -443,6 +443,14 @@ async function loadConfig() {
 
     if(profile!==currentUserProfile || storage!==currentTestGroupStorageId())return;
     config=RosterModel.config(config);
+    if(window.SHATIBIYYA_EMAIL_ONLY_LOGIN && currentAuthSession?.email){
+      const hash=await sha256Hex(normalizeEmail(currentAuthSession.email));
+      const access=config.loginEmails?.[hash];
+      if(profile!==currentUserProfile || storage!==currentTestGroupStorageId())return;
+      if(!access || access.role!=='student' || RosterModel.resolve(access.studentName,config.studentAliases)!==RosterModel.resolve(profile.studentName,config.studentAliases)){
+        clearAuthSession();showLogin('تم تغيير بيانات الدخول أو إلغاء الوصول. تواصل مع الأستاذ.');return;
+      }
+    }
     if(currentUserProfile){currentUserProfile.studentName=RosterModel.resolve(currentUserProfile.studentName,config.studentAliases);elements.accountName.textContent=`${currentUserProfile.studentName} - ${groupLabel(currentGroupId)}`;}
     if(!config.students.includes(currentUserProfile?.studentName)) {
       window.Jam?.logout();window.Review?.logout();window.Khatma?.logout();window.StudentDashboard?.logout();
