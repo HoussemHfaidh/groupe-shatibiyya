@@ -1,0 +1,4 @@
+const test=require('node:test'),assert=require('node:assert/strict'),M=require('../makeup-model');
+const names=['A','B','C'];
+test('Debts accumulate across weeks and completed lessons stay completed after import',()=>{let s=M.add({},[{student:'A',lessons:'1, 2'}],names);s=M.confirm(s,'B','A',1,names);s=M.add(s,[{student:'A',lessons:'1,3'}],names);assert.deepEqual(M.pending(s,'A').map(d=>d.lesson),[2,3]);assert.equal(M.entries(s).length,3);});
+test('Self validation, indebted validators and duplicate confirmations rejected',()=>{let s=M.add({},[{student:'A',lessons:'1'},{student:'B',lessons:'2'}],names);assert.throws(()=>M.confirm(s,'A','A',1,names));assert.throws(()=>M.confirm(s,'B','A',1,names));s=M.confirm(s,'C','A',1,names);assert.throws(()=>M.confirm(s,'C','A',1,names));assert.throws(()=>M.add(s,[{student:'X',lessons:'1'}],names));});

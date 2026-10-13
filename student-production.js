@@ -210,7 +210,7 @@ function saveAuthSession(session) {
 
 function clearAuthSession() {
   window.Jam?.logout();
-  window.Review?.logout();
+  window.Review?.logout();window.Makeup?.logout();
   window.Khatma?.logout();window.StudentDashboard?.logout();
   currentAuthSession = null;
   currentUserProfile = null;
@@ -455,7 +455,7 @@ async function loadConfig() {
     }
     if(currentUserProfile){currentUserProfile.studentName=RosterModel.resolve(currentUserProfile.studentName,config.studentAliases);elements.accountName.textContent=`${currentUserProfile.studentName} - ${groupLabel(currentGroupId)}`;}
     if(!config.students.includes(currentUserProfile?.studentName)) {
-      window.Jam?.logout();window.Review?.logout();window.Khatma?.logout();window.StudentDashboard?.logout();
+      window.Jam?.logout();window.Review?.logout();window.Makeup?.logout();window.Khatma?.logout();window.StudentDashboard?.logout();
       currentConfig=config;
       elements.studentSelect.replaceChildren();elements.validatorSelect.replaceChildren();
       elements.studentPanel.querySelectorAll(".jam-navigation button, #submissionForm button").forEach(n=>n.disabled=true);
@@ -491,6 +491,7 @@ async function loadConfig() {
       day:config.settings?.weekBoundaryDay ?? (currentGroupId==='group2'?0:6),jamEnabled:currentGroupId==='group1',
       local:window.SHATIBIYYA_JAM_LOCAL_DEV,prepare:ensureFreshAuthSession,
       url:((id,path)=>type=>getFirebaseUrl()?firebasePath(type==='config'?path:`${type}/groups/${id}`):'')(currentTestGroupStorageId(),groupPath('config'))});
+    window.Makeup?.mount({role:'student',name:currentUserProfile.studentName,students:config.students,storageId:currentTestGroupStorageId(),host:elements.studentPanel,prepare:ensureFreshAuthSession,url:((path)=>()=>firebasePath(path+'/makeup'))(groupPath('config'))});
     if(activeSection && activeSection!=='أسبوعي'){
       const navigation=elements.studentPanel.querySelector('.jam-navigation');
       const active=[...navigation.children].find(button=>button.textContent===activeSection);
