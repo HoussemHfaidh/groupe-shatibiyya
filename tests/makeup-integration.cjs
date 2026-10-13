@@ -48,6 +48,8 @@ const production=process.env.TEST_PRODUCTION==='1';
   await prof.goto('http://localhost/index.html');
   if(group==='group2')await prof.locator('#groupSelect').selectOption('group2');
   await prof.getByRole('button',{name:'التدارك',exact:true}).click();
+  assert.equal(await prof.locator('#makeup-import-rows input').first().isVisible(),false);
+  await prof.locator('.makeup-manual summary').click();
   await prof.locator('#makeup-import-rows input').first().waitFor();
   await prof.waitForFunction(()=>document.querySelectorAll('#makeup-import-rows input').length===6);
   await prof.locator('#makeup-import-rows input').first().fill('105,107');
