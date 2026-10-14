@@ -48,14 +48,36 @@ const production=process.env.TEST_PRODUCTION==='1';
   await prof.goto('http://localhost/index.html');
   if(group==='group2')await prof.locator('#groupSelect').selectOption('group2');
   await prof.getByRole('button',{name:'التدارك',exact:true}).click();
-  assert.equal(await prof.locator('#makeup-import-rows input').first().isVisible(),false);
-  await prof.locator('.makeup-manual summary').click();
-  await prof.locator('#makeup-import-rows input').first().waitFor();
-  await prof.waitForFunction(()=>document.querySelectorAll('#makeup-import-rows input').length===6);
-  await prof.locator('#makeup-import-rows input').first().fill('105,107');
+  assert.equal(await prof.locator('#makeup-import-rows').count(),0);
+  await prof.waitForFunction(()=>!document.querySelector('#makeup-file').disabled);
+  const XLSX=require('../vendor/xlsx.full.min.js');
+  const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([['الاسم','أقل من 50% في الاختبار','حضور أقل من 70%','غياب'],['أحمد','105-107','','']]),'التدارك');
+  const bytes=XLSX.write(book,{type:'buffer',bookType:group==='group1'?'xlsx':'biff8'});
+  await prof.locator('#makeup-file').setInputFiles({name:group==='group1'?'table.xlsx':'table.xls',mimeType:'application/octet-stream',buffer:Buffer.from(bytes)});
   await prof.getByRole('button',{name:'نشر التدارك',exact:true}).click();
-  await prof.waitForFunction(()=>document.querySelector('.makeup-panel .result-box').textContent==='تم الحفظ');
+  await prof.waitForFunction(()=>document.querySelector('.makeup-panel .result-box').textContent==='تم نشر التدارك من الملف بنجاح');
   assert.equal(Object.keys(stores[configPath.replace('.json','/makeup.json')].debts).length,2);
+  assert.equal(await prof.locator('#makeup-file').inputValue(),'');
+  // The same file is idempotent and cannot erase the previous debts.
+  await prof.locator('#makeup-file').setInputFiles({name:'table.xlsx',mimeType:'application/octet-stream',buffer:Buffer.from(XLSX.write(book,{type:'buffer',bookType:'xlsx'}))});
+  await prof.getByRole('button',{name:'نشر التدارك',exact:true}).click();
+  await prof.waitForFunction(()=>document.querySelector('.makeup-panel .result-box').textContent==='تم نشر التدارك من الملف بنجاح');
+  assert.equal(Object.keys(stores[configPath.replace('.json','/makeup.json')].debts).length,2);
+  const before=JSON.stringify(stores[configPath.replace('.json','/makeup.json')]);
+  const bad=XLSX.utils.book_new();XLSX.utils.book_append_sheet(bad,XLSX.utils.aoa_to_sheet([['الاسم','غياب'],['اسم غير معروف','108']]),'التدارك');
+  await prof.locator('#makeup-file').setInputFiles({name:'bad.xlsx',mimeType:'application/octet-stream',buffer:Buffer.from(XLSX.write(bad,{type:'buffer',bookType:'xlsx'}))});
+  await prof.getByRole('button',{name:'نشر التدارك',exact:true}).click();
+  await prof.waitForFunction(()=>document.querySelector('.makeup-panel .result-box').textContent.includes('الاسم غير مطابق'));
+  assert.equal(JSON.stringify(stores[configPath.replace('.json','/makeup.json')]),before);
+  assert.notEqual(await prof.locator('#makeup-file').inputValue(),'');
+  // An import finishing after a group switch cannot write to either group.
+  await prof.evaluate(()=>{MakeupImport.read=()=>new Promise(resolve=>window.completeOldImport=resolve);});
+  await prof.getByRole('button',{name:'نشر التدارك',exact:true}).click();
+  await prof.waitForFunction(()=>!!window.completeOldImport);
+  await prof.evaluate(()=>{Makeup.mount({role:'professor',students:['أحمد','علي'],storageId:'other-group',host:document.querySelector('main.layout'),url:()=> 'https://groupe-shatibiyya-default-rtdb.asia-southeast1.firebasedatabase.app/config/other/makeup.json'});window.completeOldImport({rows:[{student:'أحمد',lessons:'999',reason:'غياب'}],source:{name:'old.xlsx'}});});
+  await prof.waitForFunction(()=>!document.querySelector('#makeup-file').disabled);
+  assert.equal(JSON.stringify(stores[configPath.replace('.json','/makeup.json')]),before);
+  if(group==='group1')await prof.screenshot({path:'/private/tmp/makeup-file-upload-mobile.png',fullPage:true});
   assert.deepEqual(errors,[]);await context.close();console.log('PASS integration',group);
  }
  }finally{await browser.close();}
