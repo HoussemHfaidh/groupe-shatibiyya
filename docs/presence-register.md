@@ -44,3 +44,8 @@ Il lit les données uniquement quand sa section est ouverte, avec actualisation
 Octobre 15 production regression fix: no permanent Firebase streams are opened
 for this feature. The current student's app streams continue to run unchanged.
 The register reads only when opened and polls locally every 30s while visible.
+
+Groupe 2 image history: lessons 32–36, 6 September to 11 October 2026, 25 participants.
+The original image-rate row is preserved; its group totals treat the two dash cells
+as applicable attendance, matching the screenshot. Names are linked to the live roster
+before the ETag-protected save; existing lessons block the operation.

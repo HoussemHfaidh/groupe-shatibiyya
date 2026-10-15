@@ -13,7 +13,30 @@ function stats(cells){const active=cells.filter(v=>v!=='');const count=fn=>activ
 // Transcribed from the supplied image, oldest lesson first. Names are reviewed before saving.
 const historyNames=['أسماء شلبي','أسماء قرشان','آدم الماجري','حسام حفيظ','حسنين عكروت','زينب بالحاج صالح','سمية الشيخ علي','علي اليانقي','مالك بن عبدالله','معز بن زيد','ياسين بن عمار','أشرف السماوي','فراس المسعدي','حمزة الورتاني'];
 const historyRows=[['متأخرة','متأخرة','متأخرة','اعتذرت','اعتذرت','اعتذرت'],['متأخرة','متأخرة','متأخرة','اعتذرت','متأخرة','x'],['x','x','x','x','x','x'],['x','x','متأخرة','x','x','x'],['x','x','x','x','x','x'],['x','x','متأخرة','متأخرة','متأخرة','x'],['متأخرة','لا','متأخرة','اعتذرت','متأخرة','اعتذرت'],['تدارك','متأخرة','تدارك','متأخرة','متأخرة','متأخرة'],['متأخرة','x','x','x','متأخرة','x'],['x','x','x','x','x','x'],['x','x','x','x','x','متأخرة'],['x','x','متأخرة','x','x','x'],['متأخرة','x','متأخرة','x','تدارك','x'],['x','x','x','x','x','اعتذرت']];
-const historyMeta=[[106,632,645,'2026-09-05'],[107,646,661,'2026-09-12'],[108,662,680,'2026-09-19'],[109,681,695,'2026-09-26'],[110,696,713,'2026-10-03'],[111,714,724,'2026-10-10']];
-function history(store,names){if(names.length!==14||names.some(n=>!n)||new Set(names).size!==14)throw Error('اربط كل اسم بطالب مختلف.');const next=structuredClone(store||{});next.lessons||={};for(const [i,m] of historyMeta.entries()){if(next.lessons[m[0]])throw Error('يوجد درس محفوظ بنفس الرقم؛ لن تتم الكتابة فوقه.');next.lessons[m[0]]={lesson:m[0],start:m[1],end:m[2],date:m[3],students:names,cells:Object.fromEntries(names.map((n,j)=>[n,historyRows[j][i]])),source:'image-20261010',overrides:{}};}return next;}
-const api={values,roster,validate,save,value,edit,stats,history,historyNames,metadata,project};if(typeof module!=='undefined')module.exports=api;else root.PresenceRegisterModel=api;
+const historyMeta=[[106,632,645,'2026-09-05',93],[107,646,661,'2026-09-12',93],[108,662,680,'2026-09-19',93],[109,681,695,'2026-09-26',79],[110,696,713,'2026-10-03',86],[111,714,724,'2026-10-10',79]];
+const historyGroup2Names=['إيناس غيضاوي','سلسبيل القاضي','أنور المناعي','ياسين الماجري','خديجة العفاس','أشرف قرمش','محمد أمين كمون','محمد نزار بشير','محمد البدوي','محمد قطاطة','نور القاضي','غيث عبد الله','أحمد أمين شقرون','ضياء الدين بن سليمان','محمد خليل حيزاوي','مسعود خرشوفي','أحمد جوانب','محمد الهادي الغربي','أنور عزديني','أسماء مسعودي','أسامة عصمان','محمد الصادق الكشباطي','تيسير عمارة','أماني سفسافي','عزيز موسى'];
+const historyGroup2Rows=[
+ ['x','تدارك','متأخرة','x','x'],['x','متأخرة','x','x','x'],['x','تدارك','x','x','x'],
+ ['x','x','x','x','x'],['x','x','x','x','x'],['تدارك','تدارك','x','x','x'],
+ ['اعتذرت','x','اعتذرت','اعتذرت','اعتذرت'],['متأخرة','تدارك','x','اعتذرت','x'],
+ ['متأخرة','x','x','x','x'],['x','x','x','x','x'],['x','تدارك','x','اعتذرت','x'],
+ ['متأخرة','تدارك','x','x','x'],['متأخرة','x','x','x','x'],['x','x','x','x','x'],
+ ['تدارك','متأخرة','متأخرة','اعتذرت','اعتذرت'],['تدارك','x','x','اعتذرت','x'],
+ ['x','x','x','x','x'],['x','x','x','x','x'],['x','x','x','x','x'],
+ ['x','x','x','x','x'],['تدارك','متأخرة','x','اعتذرت','x'],['x','x','x','x','x'],
+ ['تدارك','متأخرة','x','متأخرة','اعتذرت'],['x','','','x','x'],['x','تدارك','x','x','x']
+];
+const historyMetaGroup2=[[32,235,237,'2026-09-06',78],[33,238,242,'2026-09-13',67],[34,243,245,'2026-09-20',94],[35,245,247,'2026-09-27',72],[36,248,249,'2026-10-11',89]];
+function history(store,names,group='group1'){
+const source=group==='group2'?{names:historyGroup2Names,rows:historyGroup2Rows,meta:historyMetaGroup2,image:'image-20261015-group2'}:{names:historyNames,rows:historyRows,meta:historyMeta,image:'image-20261010-group1'};
+if(names.length!==source.names.length||names.some(n=>!n)||new Set(names).size!==names.length)throw Error('اربط كل اسم بطالب مختلف.');
+const next=structuredClone(store||{});next.lessons||={};
+for(const [i,m] of source.meta.entries()){
+ if(next.lessons[m[0]])throw Error('يوجد درس محفوظ بنفس الرقم؛ لن تتم الكتابة فوقه.');
+ const cells=Object.fromEntries(names.map((n,j)=>[n,source.rows[j][i]]));
+ next.lessons[m[0]]={lesson:m[0],start:m[1],end:m[2],date:m[3],imageRate:m[4],students:names,cells,source:source.image,overrides:{}};
+}
+return next;
+}
+const api={values,roster,validate,save,value,edit,stats,history,historyNames,historyGroup2Names,historyGroup2Rows,metadata,project};if(typeof module!=='undefined')module.exports=api;else root.PresenceRegisterModel=api;
 })(globalThis);
