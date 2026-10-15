@@ -32,3 +32,7 @@ Partage PNG du tableau complet via l'outil existant TableShare.
 
 Tests: `node --test tests/presence-register.test.cjs tests/attendance.test.cjs tests/makeup.test.cjs`
 et `node tests/presence-register-browser.cjs` (Playwright).
+
+Correction 15 octobre: le registre s'affiche sans attendre le rattrapage. Lecture
+de `makeup/debts` uniquement (sans image source). Réutilisation de l'abonnement
+config partagé pour ne pas ajouter de connexions SSE au domaine Firebase.

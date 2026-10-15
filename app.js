@@ -976,7 +976,7 @@ function render(selectedWeekId) {
   sortWeeks();
   renderWeekSelect(selectedWeekId);
   renderSettings();
-  window.PresenceRegister?.mount({role:'professor',studentAliases:state.studentAliases||[],students:[...state.students],storageId:currentGroupId,ready:jamConfigReady,host:document.querySelector('main.layout'),url:((path)=>()=>firebasePath(path+'/presenceRegister'))(groupPath('config')),makeupUrl:((path)=>()=>firebasePath(path+'/makeup'))(groupPath('config'))});
+  window.PresenceRegister?.mount({role:'professor',studentAliases:state.studentAliases||[],students:[...state.students],storageId:currentGroupId,ready:jamConfigReady,host:document.querySelector('main.layout'),url:((path)=>()=>firebasePath(path+'/presenceRegister'))(groupPath('config')),makeupUrl:((path)=>()=>firebasePath(path+'/makeup/debts'))(groupPath('config'))});
   window.Makeup?.mount({role:'professor',studentAliases:state.studentAliases||[],students:[...state.students],storageId:currentGroupId,ready:jamConfigReady,host:document.querySelector('main.layout'),url:((path)=>()=>firebasePath(path+'/makeup'))(groupPath('config'))});
   window.StudentAdmin?.mount({groupId:currentGroupId,config:state,ready:jamConfigReady,host:document.querySelector('main.layout'),edit:editRoster,error:()=>elements.syncStatus.textContent});
   renderStudentList();
