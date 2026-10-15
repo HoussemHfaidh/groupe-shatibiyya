@@ -36,3 +36,11 @@ et `node tests/presence-register-browser.cjs` (Playwright).
 Correction 15 octobre: le registre s'affiche sans attendre le rattrapage. Lecture
 de `makeup/debts` uniquement (sans image source). Réutilisation de l'abonnement
 config partagé pour ne pas ajouter de connexions SSE au domaine Firebase.
+
+Isolation après retour arrière: le registre ne crée aucune connexion EventSource.
+Il lit les données uniquement quand sa section est ouverte, avec actualisation
+à l'ouverture, au retour de focus, après une modification et toutes les 30 secondes.
+
+Octobre 15 production regression fix: no permanent Firebase streams are opened
+for this feature. The current student's app streams continue to run unchanged.
+The register reads only when opened and polls locally every 30s while visible.

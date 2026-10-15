@@ -6,7 +6,7 @@ const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!=null)n.te
 const field=(label,input)=>{const n=el('label',null,'field');n.append(el('span',label),input);return n;};
 const button=(label,fn)=>{const b=el('button',label,'secondary');b.type='button';b.onclick=fn;return b;};
 const students=()=>M.roster(ctx.students,ctx.storageId);
-function mount(next){if(next.role!=='professor')return;ctx=next;if(!panel)build();if(key!==ctx.storageId){key=ctx.storageId;epoch++;data={};makeup={};draft=null;loaded=false;form.reset();draftBox.replaceChildren();watch?.stop();watch=window.LiveData.watch({urls:()=>[ctx.url().replace('/presenceRegister.json','.json')],change:refresh});}if(!loaded&&ctx.ready!==false)watch?.refresh?.();draw();}
+function mount(next){if(next.role!=='professor')return;ctx=next;if(!panel)build();if(key!==ctx.storageId){key=ctx.storageId;epoch++;data={};makeup={};draft=null;loaded=false;form.reset();draftBox.replaceChildren();watch?.stop();watch=window.LiveData.watch({urls:()=>[],change:refresh});}if(!loaded&&ctx.ready!==false)watch?.refresh?.();draw();}
 function build(){panel=el('section',null,'panel presence-register');panel.hidden=true;panel.append(el('h2','سجل الحضور'),el('p','ارفع تقرير Zoom، راجع الأسماء ثم اعتمد الدرس. يمكن تعديل كل خانة؛ التصحيح اليدوي له الأولوية على التدارك.'));
 status=el('p',null,'result-box');status.setAttribute('aria-live','polite');form=el('form',null,'presence-controls');
 for(const [label,type,id] of [['تاريخ الحصة','date','date'],['رقم الدرس','number','lesson'],['الأبيات من','number','start'],['الأبيات إلى','number','end']]){const input=el('input');input.type=type;input.name=id;input.required=true;if(type==='number'){input.min=1;input.step=1;}form.append(field(label,input));}
@@ -15,7 +15,7 @@ draftBox=el('div');tableBox=el('div',null,'table-scroll');panel.append(form,butt
 const navigation=ctx.host.querySelector('.jam-navigation');nav=button('سجل الحضور',()=>{navigation.querySelector('button').click();[...ctx.host.children].filter(n=>n!==panel&&!n.contains(navigation)).forEach(n=>n.hidden=true);panel.hidden=false;[...navigation.children].forEach(n=>n.setAttribute('aria-pressed',String(n===nav)));document.querySelectorAll('#exportImageBtn,#resetBtn').forEach(n=>n.hidden=true);refresh();});navigation.addEventListener('click',e=>{if(e.target!==nav){panel.hidden=true;nav.setAttribute('aria-pressed','false');}});navigation.append(nav);ctx.host.append(panel);}
 async function read(url){const r=await fetch(url,{headers:{'X-Firebase-ETag':'true'},cache:'no-store',signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error('تعذر تحميل سجل الحضور أو التدارك.');return {value:await r.json()||{},etag:r.headers.get('etag')};}
 async function refresh(){
- if(!ctx||ctx.ready===false||busy)return;
+ if(!ctx||panel.hidden||ctx.ready===false||busy)return;
  const c=ctx,t=epoch,r=revision;
  const current=()=>t===epoch&&!busy&&r===revision;
  if(!loaded)status.textContent='جار تحميل سجل الحضور...';
