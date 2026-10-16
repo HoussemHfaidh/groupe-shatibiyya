@@ -66,6 +66,13 @@
     if (!result.length) throw Error('لا توجد مشاركات في التقرير');
     return result;
   }
+  function sessionDate(records) {
+    const joins = records.map(record => Number(record.join)).filter(Number.isFinite);
+    if (!joins.length) throw Error('تعذر استخراج تاريخ الحصة من تقرير Zoom.');
+    // Zoom exports wall-clock times without a timezone; attendance-import parses these as UTC
+    // deliberately so the date remains the one printed in the report on every device.
+    return new Date(Math.min(...joins)).toISOString().slice(0, 10);
+  }
   function union(intervals) {
     const merged = [];
     for (const interval of intervals.map(i => [...i]).sort((a,b) => a[0]-b[0])) {
@@ -207,7 +214,7 @@
     }
     return value<70 ? '<70%' : '<100%';
   }
-  const api = { mergeParticipants, undoMerge, formatPercent, normalize, time, parseCSV, records, calculate, displayTime, displayDate, union, migrateFlags, recalculateSession, removeParticipant, restoreParticipant, renameParticipant };
+  const api = { mergeParticipants, undoMerge, formatPercent, normalize, time, parseCSV, records, sessionDate, calculate, displayTime, displayDate, union, migrateFlags, recalculateSession, removeParticipant, restoreParticipant, renameParticipant };
   if (typeof module !== 'undefined') module.exports = api;
   else root.AttendanceModel = api;
 })(typeof window === 'undefined' ? globalThis : window);
