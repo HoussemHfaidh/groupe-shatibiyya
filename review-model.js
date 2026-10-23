@@ -14,10 +14,7 @@
    if(JSON.stringify(store[w.id].students)===JSON.stringify(students))return store;
    return {...store,[w.id]:{...store[w.id],students:[...students]}};
   }
-  const previous=Object.values(store).find(x=>x.endDate===w.startDate);
-  const assigned={};
-  for(const name of students){const prior=previous?.records?.find(r=>r.student===name);if(prior)assigned[name]=prior.part===1?2:1;}
-  return {...store,[w.id]:{...w,students:[...students],assigned,records:[]}};
+  return {...store,[w.id]:{...w,students:[...students],records:[]}};
  }
  function recordFor(w,name){return (w?.records||[]).find(r=>r.student===name);}
  function metrics(value){
@@ -31,7 +28,6 @@
   const measured=metrics(measurement);
   const next=structuredClone(w);
   if(recordFor(w,target))throw Error('تم تأكيد هذا الطالب بالفعل.');
-  if(w.assigned?.[target] && w.assigned[target]!==part)throw Error('يجب عكس القسم الذي قرأه الطالب الأسبوع الماضي.');
   next.records ||= [];
   next.records.push({...measured,student:target,part,complete:finished,participated:true,validator:actor,createdAt:now.toISOString()});
   return next;
