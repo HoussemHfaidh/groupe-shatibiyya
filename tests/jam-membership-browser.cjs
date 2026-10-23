@@ -12,7 +12,7 @@ const fs=require('node:fs/promises'),path=require('node:path'),assert=require('n
    if(p==='/')return route.fulfill({contentType:'text/html',body:`<html dir="rtl"><meta charset="utf-8"><link rel="stylesheet" href="styles-dev.css"><main class="layout"><label><select id="groupSelect"></select></label></main><script>window.SHATIBIYYA_JAM_LOCAL_DEV=true;</script><script src="table-share.js"></script><script src="jam-model.js"></script><script src="jam.js"></script><script>window.ctx={role:'professor',host:document.querySelector('main'),storageId:'${group}',students:${JSON.stringify(students)},schedule:${JSON.stringify(schedule)}};Jam.mount(ctx);</script></html>`});
    return route.fulfill({contentType:p.endsWith('.css')?'text/css':'text/javascript',body:await fs.readFile(path.join(__dirname,'..',p))});
   });
-  await page.goto('http://jam.test/');await page.getByRole('button',{name:'واجب الجمع',exact:true}).click();
+  await page.goto('http://jam.test/');await page.getByRole('button',{name:group==='group2'?'الواحب':'واجب الجمع',exact:true}).click();
   const table=page.locator('.jam-tracking-table');await table.locator('tfoot td').first().waitFor();
   const names=await table.locator('tbody .name-col').allTextContents();
   assert.deepEqual(names,group==='group1'?['أحمد','علي']:students);

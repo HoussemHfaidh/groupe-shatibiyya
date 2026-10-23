@@ -19,7 +19,7 @@ window.StudentDashboard=(()=>{
     // The existing first button was التسميع; keep its navigation behavior available.
   }
   function activate(id){
-    const target=[...ctx.host.querySelectorAll('.jam-navigation button')].find(b=>b.textContent===labels[id]);
+    const target=[...ctx.host.querySelectorAll('.jam-navigation button')].find(b=>b.textContent===(id==='jam'?window.Jam.label(ctx.storageId):labels[id]));
     if(target && !target.hidden && !target.disabled)target.click();
   }
   function draw(data){
@@ -32,7 +32,7 @@ window.StudentDashboard=(()=>{
     const bar=el('progress');bar.max=model.total||1;bar.value=model.done;bar.setAttribute('aria-label','تقدم أنشطة الأسبوع');content.append(bar);
     const cards=el('div',undefined,'dashboard-grid');
     for(const card of model.cards){const button=el('button',undefined,`dashboard-card dashboard-${card.state}`);button.type='button';button.dataset.activity=card.id;button.disabled=card.state==='waiting';
-      button.append(el('strong',card.label),el('span',({done:'✓ مكتمل',todo:'○ لم يكتمل بعد',partial:'◐ غير مكتمل',waiting:'— غير متاح بعد',unknown:'؟ تعذر التحديث'})[card.state],'dashboard-badge'),el('span',card.detail),el('span',card.state==='waiting'?'سنخبرك عند توفره':'فتح النشاط ←','dashboard-link'));if(card.id==='review'){button.querySelector('.dashboard-badge').prepend('مراجعتي: ');button.insertBefore(el('span',card.peerConfirmations==null?'تأكيداتي لزملائي: تعذر التحديث':`تأكيداتي لزملائي هذا الأسبوع: ${card.peerConfirmations}`,'dashboard-peer-count'),button.lastChild);}
+      button.append(el('strong',card.id==='jam'?window.Jam.label(ctx.storageId):card.label),el('span',({done:'✓ مكتمل',todo:'○ لم يكتمل بعد',partial:'◐ غير مكتمل',waiting:'— غير متاح بعد',unknown:'؟ تعذر التحديث'})[card.state],'dashboard-badge'),el('span',card.detail),el('span',card.state==='waiting'?'سنخبرك عند توفره':'فتح النشاط ←','dashboard-link'));if(card.id==='review'){button.querySelector('.dashboard-badge').prepend('مراجعتي: ');button.insertBefore(el('span',card.peerConfirmations==null?'تأكيداتي لزملائي: تعذر التحديث':`تأكيداتي لزملائي هذا الأسبوع: ${card.peerConfirmations}`,'dashboard-peer-count'),button.lastChild);}
       button.onclick=()=>activate(card.id);cards.append(button);
     }content.append(cards);
     content.append(el('p',model.remaining.length?`المتبقي هذا الأسبوع: ${model.remaining.join('، ')}.`:model.weather==='sun'?'كل شيء مكتمل لهذا الأسبوع. أحسنت المتابعة.':'ستظهر هنا الأنشطة الجديدة عند فتحها.','dashboard-next'));

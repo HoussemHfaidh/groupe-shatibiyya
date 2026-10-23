@@ -16,9 +16,14 @@ window.Jam = (() => {
     return wrapper;
   }
   const participants = ctx => JamModel.participants(ctx.students, ctx.storageId);
+  const label = (storageId=context?.storageId) => /^(?:login-(?:test|sandbox)-)?group2$/.test(storageId||'') ? 'الواحب' : 'واجب الجمع';
   function mount(ctx) {
     context = ctx;
     if (!panel) build();
+    panel.querySelector('h2').textContent=label();
+    context.host.querySelector('[data-jam-navigation]').textContent=label();
+    const sharing=panel.querySelector('.jam-sharing');
+    if(sharing)sharing.replaceChildren(window.TableShare.button(()=>report.querySelector('table'),`متابعة ${label()}`));
     applyStudentVisibility?.();
     const nextKey = JSON.stringify([ctx.storageId,ctx.students,ctx.studentAliases]);
     if (key !== nextKey) {
@@ -59,7 +64,7 @@ window.Jam = (() => {
     reload.addEventListener("click", refresh);
     panel.append(heading, weekNotice);
     if (context.role === "professor") {
-      panel.append(window.TableShare.button(() => report.querySelector("table"), "متابعة واجب الجمع"), report);
+      const sharing=el("div","","jam-sharing");panel.append(sharing,report);
     }
     panel.append(reload, columns, form, result);
     if (window.SHATIBIYYA_JAM_LOCAL_DEV) panel.prepend(el("p", "بيانات واجب الجمع: DEV محلي", "eyebrow"));
@@ -67,7 +72,7 @@ window.Jam = (() => {
       panel.hidden = true;
       const nav = el("div", "", "button-row jam-navigation");
       const recitation = el("button", "التسميع", "secondary"), jam = el("button", "واجب الجمع", "secondary");
-      recitation.type = jam.type = "button";
+      jam.dataset.jamNavigation="";recitation.type = jam.type = "button";
       const original = [...context.host.children].filter(node => !node.matches(".account-box, .eyebrow"));
       function activate(showJam) {
         showJam = showJam && enabled();
@@ -104,7 +109,7 @@ window.Jam = (() => {
         recitation.setAttribute("aria-pressed", String(!showJam));
         if (showJam) refresh();
       }
-      recitation.type = jam.type = "button";
+      jam.dataset.jamNavigation="";recitation.type = jam.type = "button";
       recitation.addEventListener("click", () => activate(false));
       jam.addEventListener("click", () => activate(true));
       buttons.append(recitation, jam); nav.append(groupField, buttons);
@@ -176,12 +181,12 @@ window.Jam = (() => {
     const assignment = context.role === "professor" || JamModel.started(candidate) ? candidate : null;
     const week = JamModel.weeklyWindow(context.schedule);
     selected = assignment?.id || "";
-    heading.textContent = JamModel.started(assignment) ? (week ? `واجب الجمع ${week.number}` : assignment.title) : "لا يوجد واجب جمع لهذا الأسبوع";
+    heading.textContent = JamModel.started(assignment) ? (week ? `${label()} ${week.number}` : assignment.title.replace(/واجب الجمع/g,label())) : `لا يوجد ${label()} لهذا الأسبوع`;
     weekNotice.textContent = context.role === "professor"
       ? "يُفتح الواجب للطلاب بعد اعتماد أول طالب وآيته. الأسبوع دون اعتماد يبقى فارغًا ولا يدخل في النسب."
       : !assignment?.verses?.length
-      ? "لم يفتح الأستاذ واجب الجمع لهذا الأسبوع بعد."
-      : "هذا واجب الأسبوع الحالي فقط. لا يوجد استدراك في واجب الجمع.";
+      ? `لم يفتح الأستاذ ${label()} لهذا الأسبوع بعد.`
+      : `هذا واجب الأسبوع الحالي فقط. لا يوجد استدراك في ${label()}.`;
     list.replaceChildren(); verses.replaceChildren(); studentSelect.replaceChildren(); verseSelect.replaceChildren();
     const confirmations = assignment?.confirmations || [];
     (assignment?.students || []).forEach(name => {
@@ -212,7 +217,7 @@ window.Jam = (() => {
     table.style.setProperty('--week-count', assignments.length);
     const columns=['index-col','name-col','completion-col',...assignments.map(()=>'week-col')];
     const columnClass=i=>`${columns[i]}${i<3?' sticky-col':''}`;
-    table.append(el("caption", "متابعة واجب الجمع"));
+    table.append(el("caption", `متابعة ${label()}`));
     const head = el("thead"), row = el("tr", "", "table-header-row");
     ["#", "الاسم", "نسبة الإنجاز", ...assignments.map(a => `${a.number} · ${a.startDate}`)].forEach((label,i) => {
       const cell = el("th", label,columnClass(i)); cell.scope = "col"; row.append(cell);
@@ -278,5 +283,5 @@ window.Jam = (() => {
     refresh();
   }, 1000 * 30);
   window.addEventListener("focus", refresh);
-  return { mount, logout() { generation++; context = null; key = ""; data = {}; selected = ""; } };
+  return { label, mount, logout() { generation++; context = null; key = ""; data = {}; selected = ""; } };
 })();
