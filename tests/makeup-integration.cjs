@@ -13,7 +13,7 @@ const production=process.env.TEST_PRODUCTION==='1';
    [jamPath]:{['week-'+date]:{id:'week-'+date,startDate:date,endDate:group==='group1'?'2026-10-03':'2026-10-04',timeZone:'Europe/Paris',students:['أحمد','علي'],verses:['1','2'],confirmations:[{student:'علي',verseIndex:0}]}},
    [khatmaPath]:{},[production?'/khatma/catalogs/production.json':'/khatma/catalogs/login-test.json']:{},[production&&group==='group1'?'/submissions.json':`/submissions/groups/${storage}.json`]:{}
   };
-  let failing=false;const errors=[];
+  let failing=false,importConflict=false;const errors=[];
   await context.addInitScript(production=>{
    window.SHATIBIYYA_JAM_LOCAL_DEV=false;
    localStorage.setItem(production?'shatibiyya-production-session':'shatibiyya-login-test-session',JSON.stringify({email:'test@example.test',emailOnly:true,expiresAt:Date.now()+86400000}));
@@ -29,6 +29,7 @@ const production=process.env.TEST_PRODUCTION==='1';
     if(url.pathname.includes('loginEmails'))return route.fulfill({json:{role:'student',studentName:'أحمد',groupId:group},headers});
     if(failing&&url.pathname===reviewPath)return route.fulfill({status:503,json:{},headers});
     if(!Object.hasOwn(stores,url.pathname))return route.fulfill({json:{},headers});
+    if(req.method()==='PUT'&&importConflict&&url.pathname.endsWith('/makeup.json'))return route.fulfill({status:412,json:{},headers});
     if(req.method()==='PUT')stores[url.pathname]=req.postDataJSON();
     return route.fulfill({json:stores[url.pathname],headers});
    }
@@ -63,14 +64,45 @@ const production=process.env.TEST_PRODUCTION==='1';
   await prof.getByRole('button',{name:'نشر التدارك',exact:true}).click();
   await prof.waitForFunction(()=>document.querySelector('.makeup-panel .result-box').textContent==='تم نشر التدارك من الملف بنجاح');
   assert.equal(Object.keys(stores[configPath.replace('.json','/makeup.json')].debts).length,2);
-  const before=JSON.stringify(stores[configPath.replace('.json','/makeup.json')]);
+  const makeupPath=configPath.replace('.json','/makeup.json'),M=require('../makeup-model');
+  stores[makeupPath]=M.confirm(stores[makeupPath],'علي','أحمد',105,['أحمد','علي']);
+  await prof.getByRole('button',{name:'تحديث',exact:true}).click();
+  await prof.waitForFunction(()=>document.querySelector('.makeup-panel .review-green')?.textContent==='تم · علي');
+  assert.equal(await prof.locator('.makeup-panel table tr').count(),3);
+  // Navigation and a full page reload between uploads preserve the completed row.
+  await prof.reload();
+  if(group==='group2')await prof.locator('#groupSelect').selectOption('group2');
+  await prof.getByRole('button',{name:'التدارك',exact:true}).click();
+  await prof.waitForFunction(()=>document.querySelector('.makeup-panel .review-green')?.textContent==='تم · علي');
+  let before=JSON.stringify(stores[makeupPath]);
   const bad=XLSX.utils.book_new();XLSX.utils.book_append_sheet(bad,XLSX.utils.aoa_to_sheet([['الاسم','غياب'],['اسم غير معروف','108']]),'التدارك');
   await prof.locator('#makeup-file').setInputFiles({name:'bad.xlsx',mimeType:'application/octet-stream',buffer:Buffer.from(XLSX.write(bad,{type:'buffer',bookType:'xlsx'}))});
   await prof.getByRole('button',{name:'نشر التدارك',exact:true}).click();
   await prof.waitForFunction(()=>document.querySelector('.makeup-panel .result-box').textContent.includes('الاسم غير مطابق'));
   assert.equal(JSON.stringify(stores[configPath.replace('.json','/makeup.json')]),before);
   assert.notEqual(await prof.locator('#makeup-file').inputValue(),'');
+  assert.equal(await prof.locator('.makeup-panel .review-green').count(),1);
+  // Only a successful new upload removes the completed row, even if the file repeats it.
+  await prof.locator('#makeup-file').setInputFiles({name:'next.xlsx',mimeType:'application/octet-stream',buffer:Buffer.from(XLSX.write(book,{type:'buffer',bookType:'xlsx'}))});
+  importConflict=true;
+  await prof.getByRole('button',{name:'نشر التدارك',exact:true}).click();
+  await prof.waitForFunction(()=>document.querySelector('.makeup-panel .result-box').textContent.includes('تغيرت القائمة'));
+  assert.equal(JSON.stringify(stores[makeupPath]),before);
+  assert.equal(await prof.locator('.makeup-panel .review-green').count(),1);
+  assert.notEqual(await prof.locator('#makeup-file').inputValue(),'');
+  importConflict=false;
+  await prof.getByRole('button',{name:'نشر التدارك',exact:true}).click();
+  await prof.waitForFunction(()=>document.querySelector('.makeup-panel .result-box').textContent==='تم نشر التدارك من الملف بنجاح');
+  assert.deepEqual(M.entries(stores[makeupPath]).map(d=>d.lesson),[107]);
+  assert.equal(await prof.locator('.makeup-panel .review-green').count(),0);
+  assert.equal(await prof.locator('.makeup-panel table tr').count(),2);
+  assert.match(await prof.locator('.makeup-panel').innerText(),/1 دروس مطلوبة · 0 مكتملة/);
+  const completed=Object.values(stores[makeupPath].debts).find(d=>d.lesson===105);
+  assert.equal(completed.completed.validator,'علي');assert.ok(completed.archivedAt);
+  if(group==='group1')await prof.screenshot({path:'/private/tmp/makeup-import-cleanup-mobile.png',fullPage:true});
+  before=JSON.stringify(stores[makeupPath]);
   // An import finishing after a group switch cannot write to either group.
+  await prof.locator('#makeup-file').setInputFiles({name:'next.xlsx',mimeType:'application/octet-stream',buffer:Buffer.from(bytes)});
   await prof.evaluate(()=>{MakeupImport.read=()=>new Promise(resolve=>window.completeOldImport=resolve);});
   await prof.getByRole('button',{name:'نشر التدارك',exact:true}).click();
   await prof.waitForFunction(()=>!!window.completeOldImport);
@@ -78,6 +110,17 @@ const production=process.env.TEST_PRODUCTION==='1';
   await prof.waitForFunction(()=>!document.querySelector('#makeup-file').disabled);
   assert.equal(JSON.stringify(stores[configPath.replace('.json','/makeup.json')]),before);
   if(group==='group1')await prof.screenshot({path:'/private/tmp/makeup-file-upload-mobile.png',fullPage:true});
+  // Real student page and confirmation dialog, with the user's 115/116 example.
+  stores[makeupPath]=M.add({},[{student:'أحمد',lessons:'115'},{student:'علي',lessons:'115,116'}],['أحمد','علي']);
+  await page.getByRole('button',{name:'التدارك',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('[name=makeupLesson]')?.options.length===2);
+  const lesson=page.locator('[name=makeupLesson]'),confirm=page.getByRole('button',{name:'تأكيد تدارك زميلي',exact:true});
+  await lesson.selectOption('115');assert.equal(await confirm.isDisabled(),true);
+  await lesson.selectOption('116');assert.equal(await confirm.isEnabled(),true);
+  await confirm.click();await page.locator('dialog[open]').getByRole('button',{name:'تأكيد',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('.makeup-panel .result-box').textContent==='تم الحفظ');
+  assert.deepEqual(M.pending(stores[makeupPath],'علي').map(d=>d.lesson),[115]);
+  assert.equal(Object.values(stores[makeupPath].debts).find(d=>d.lesson===116).completed.validator,'أحمد');
   assert.deepEqual(errors,[]);await context.close();console.log('PASS integration',group);
  }
  }finally{await browser.close();}
