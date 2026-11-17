@@ -16,7 +16,7 @@ window.Jam = (() => {
     return wrapper;
   }
   const participants = ctx => JamModel.participants(ctx.students, ctx.storageId);
-  const label = (storageId=context?.storageId) => /^(?:login-(?:test|sandbox)-)?group2$/.test(storageId||'') ? 'الواحب' : 'واجب الجمع';
+  const label = (storageId=context?.storageId) => /^(?:login-(?:test|sandbox)-)?group2$/.test(storageId||'') ? 'الواجب' : 'واجب الجمع';
   function mount(ctx) {
     context = ctx;
     if (!panel) build();
