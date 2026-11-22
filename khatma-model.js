@@ -1,4 +1,4 @@
-/* Independent khatmas and append-only session history. */
+/* Independent khatmas and student-owned session history. */
 (function (root) {
   const calendar = typeof module !== 'undefined' ? require('./review-model') : root.ReviewModel;
   const teachers = ['معز البحري','أنيس الغربي','حمدي عمارة','أسامة الورغي','أشرف السماوي','زينب بالحاج صالح','أسماء قرشان','أسماء شلبي','محمد أمين الغرسلاوي','ياسين بن عمار','فراس المسعدي','معز بن زيد','أسماء مسعودي','سمية الشيخ علي'];
@@ -54,6 +54,38 @@
     return append(store, { ...input, khatmaId: previous?.khatmaId || '',
       title: input.riwaya, complete: false }, actor, students, day, now);
   }
+  function ownedEntry(store,id,actor,students,expected){
+    const entry=store.entries?.[id];
+    if(actor.role!=='student'||!students.includes(actor.name)||!entry||entry.student!==actor.name)throw Error('يمكنك تعديل أو حذف تسجيلاتك فقط.');
+    if(!expected||JSON.stringify(entry)!==JSON.stringify(expected))throw Error('تغير هذا التسجيل. حدّث السجل وأعد المحاولة.');
+    return entry;
+  }
+  function removeEntry(store,id,actor,students,expected){
+    const entry=ownedEntry(store,id,actor,students,expected),next={...store,entries:{...store.entries},khatmas:{...store.khatmas}};
+    delete next.entries[id];
+    if(!Object.values(next.entries).some(e=>e.khatmaId===entry.khatmaId))delete next.khatmas[entry.khatmaId];
+    return next;
+  }
+  function updateEntry(store,id,input,actor,students,day,expected,now=new Date()){
+    const old=ownedEntry(store,id,actor,students,expected);
+    const base={...store,entries:{...store.entries}};delete base.entries[id];
+    const changed=old.teacher!==input.teacher||old.riwaya!==input.riwaya;
+    const target=changed?entries(base,actor.name).find(e=>e.teacher===input.teacher&&e.riwaya===input.riwaya&&!entries(base,actor.name).some(x=>x.khatmaId===e.khatmaId&&x.complete)):old;
+    let tempId=`edit-${id}-${now.getTime()}`;while(base.entries[tempId]||base.khatmas?.[tempId])tempId+='-1';
+    // A retired catalog value may be kept, but cannot be newly selected.
+    const settings={...store.settings,teachers:teacherList(store),readings:readingList(store)};
+    if(input.teacher===old.teacher)settings.teachers=[...new Set([...settings.teachers,old.teacher])];
+    if(input.riwaya===old.riwaya)settings.readings=[...new Set([...settings.readings,old.riwaya])];
+    // Editing an earlier entry of a completed khatma must remain possible.
+    const completed=Object.values(base.entries).filter(e=>e.khatmaId===target?.khatmaId&&e.complete);
+    for(const e of completed)base.entries[e.id]={...e,complete:false};
+    const next=append({...base,settings},{...input,id:tempId,khatmaId:target?.khatmaId||'',title:input.riwaya,complete:old.complete},actor,students,day,now);
+    next.entries[id]={...next.entries[tempId],id,createdAt:old.createdAt,updatedAt:now.toISOString()};delete next.entries[tempId];
+    for(const e of completed)next.entries[e.id]=e;
+    if(store.settings===undefined)delete next.settings;else next.settings=store.settings;
+    if(!Object.values(next.entries).some(e=>e.khatmaId===old.khatmaId))delete next.khatmas[old.khatmaId];
+    return next;
+  }
   function entries(store, student, weekId) {
     return Object.values(store.entries || {}).filter(e => (!student || e.student === student) && (!weekId || e.weekId === weekId))
       .sort((a,b) => (b.date || b.createdAt.slice(0,10)).localeCompare(a.date || a.createdAt.slice(0,10)) || b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
@@ -65,6 +97,6 @@
       seen.add(e.khatmaId); return true;
     });
   }
-  const api = { append, recordSession, entries, latest, week: calendar.week, teachers, readings, attendance, teacherList, readingList, setTeachers, today };
+  const api = { updateEntry, removeEntry, append, recordSession, entries, latest, week: calendar.week, teachers, readings, attendance, teacherList, readingList, setTeachers, today };
   if (typeof module !== 'undefined') module.exports = api; else root.KhatmaModel = api;
 })(globalThis);

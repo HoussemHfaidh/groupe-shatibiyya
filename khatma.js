@@ -2,11 +2,11 @@
 window.Khatma = (() => {
   let ctx, key = '', epoch = 0, data = {}, busy = false, loaded = false, pending;
   let panel, navButton, heading, result, form, riwaya, position, notes, submit, report, weekSelect, detailSelect;
-  let readingEditor;
+  let readingEditor, editing=null, cancelEdit;
   let teacher, sessionDate, attendance, start, studentName, teacherEditor, teacherForm, teacherSave, teacherDirty = false;
   let selectedWeek = '', selectedStudent = '', refreshId = 0;
   const el = (tag, text, cls) => { const n = document.createElement(tag); if (text) n.textContent = text; if (cls) n.className = cls; return n; };
-  const field = (label, input) => { const n = el('label', '', 'field'); n.append(el('span', label), input); return n; };
+  const field = (label, input) => { input.setAttribute('aria-label',label); const n = el('label', '', 'field'); n.append(el('span', label), input); return n; };
   const button = (label, action) => { const b = el('button', label, 'secondary'); b.type = 'button'; b.onclick = action; return b; };
   function mount(next) {
     if (!/^(?:login-(?:test|sandbox)-)?group[12]$/.test(next.storageId)) return;
@@ -14,7 +14,7 @@ window.Khatma = (() => {
     ctx = next;
     if (!panel) build();
     if (key !== nextKey) {
-      epoch++; key = nextKey; data = {}; loaded = false; pending = null; selectedWeek = ''; selectedStudent = ''; form.reset(); teacherDirty = false; draw();
+      epoch++; key = nextKey; data = {}; loaded = false; pending = null; selectedWeek = ''; selectedStudent = ''; editing=null; form.reset(); teacherDirty = false; draw();
     }
     if (!panel.hidden) refresh();
   }
@@ -39,6 +39,7 @@ window.Khatma = (() => {
     notes = el('textarea'); notes.maxLength = 1000; notes.rows = 3;
     submit = el('button', 'حفظ المتابعة', 'primary'); submit.type = 'submit';
     form.append(field('الاسم واللقب', studentName), field('اسم الشيخ', teacher), field('التاريخ', sessionDate), field('الحضور', attendance), field('الرواية أو القراءة', riwaya), field('بداية القراءة (السورة والآية)', start), field('نهاية القراءة (السورة والآية)', position), field('ملاحظات الشيخ(ة)', notes), submit);
+    cancelEdit=button('إلغاء التعديل',()=>{if(busy)return;editing=null;pending=null;form.reset();draw();});cancelEdit.hidden=true;form.append(cancelEdit);
     form.onsubmit = save;
     teacherForm = el('form', '', 'khatma-teacher-form');
     teacherForm.hidden = ctx.role !== 'professor';
@@ -87,14 +88,20 @@ window.Khatma = (() => {
     event.preventDefault();
     if (!ctx || busy || !loaded || !form.reportValidity()) return;
     const payload = { teacher: teacher.value, date: sessionDate.value, attendance: attendance.value, start: start.value, riwaya: riwaya.value, position: position.value, notes: notes.value };
+    const recap=[editing?'تأكيد تعديل التسجيل':'تأكيد حفظ المتابعة',`الطالب: ${ctx.name}`,`اسم الشيخ: ${payload.teacher}`,`الرواية أو القراءة: ${payload.riwaya}`,`التاريخ: ${payload.date}`,`الحضور: ${KhatmaModel.attendance[payload.attendance]}`];
+    if(payload.attendance==='present')recap.push(`بداية القراءة: ${payload.start}`,`نهاية القراءة: ${payload.position}`);
+    if(payload.notes.trim())recap.push(`ملاحظات: ${payload.notes}`);
+    recap.push('هل تؤكد صحة هذه البيانات؟');
+    if(!window.confirm(recap.join('\n')))return;
     const signature = JSON.stringify(payload);
     if (!pending || pending.signature !== signature) pending = { signature, id: crypto.randomUUID() };
-    const input = { ...payload, id: pending.id }, c = ctx, token = epoch;
+    const input = { ...payload, id: pending.id }, c = ctx, token = epoch, edited=editing;
     busy = true; refreshId++; updateFields(); result.textContent = 'جار الحفظ...';
     try {
       const snapshot = await read(c);
       if (token !== epoch) return;
-      const value = KhatmaModel.recordSession(snapshot.value, input, { role: c.role, name: c.name }, c.students, c.day);
+      const actor={role:c.role,name:c.name};
+      const value = edited ? KhatmaModel.updateEntry(snapshot.value,edited.id,input,actor,c.students,c.day,edited) : KhatmaModel.recordSession(snapshot.value,input,actor,c.students,c.day);
       if (value !== snapshot.value) {
         await c.prepare?.();
         if (token !== epoch) return;
@@ -108,11 +115,12 @@ window.Khatma = (() => {
         if (!response.ok) throw Error('تعذر الحفظ. أعد المحاولة؛ بياناتك ما زالت في النموذج.');
       }
       if (token !== epoch) return;
-      data = value; pending = null; form.reset(); teacherDirty = false; draw();
+      data = value; pending = null; editing=null; form.reset(); teacherDirty = false; draw();
       teacher.value = input.teacher; riwaya.value = input.riwaya;
-      result.textContent = 'تم حفظ المتابعة. يمكنك إضافة تسجيل آخر.';
+      result.textContent = edited?'تم تعديل التسجيل.':'تم حفظ المتابعة. يمكنك إضافة تسجيل آخر.';
+      window.dispatchEvent(new CustomEvent('shatibiyya:activity-saved',{detail:{storageId:c.storageId}}));
     } catch (e) { if (token === epoch) result.textContent = e.message; }
-    finally { busy = false; if (ctx) updateFields(); }
+    finally { busy = false; if (ctx) {updateFields();drawReport();} }
   }
   async function saveTeachers(event) {
     event.preventDefault();
@@ -137,6 +145,7 @@ window.Khatma = (() => {
     finally { busy = false; if(ctx) updateFields(); }
   }
   function updateFields() {
+    submit.textContent=editing?'حفظ التعديل':'حفظ المتابعة';cancelEdit.hidden=!editing;
     const present = attendance.value === 'present'; start.required = position.required = present;
     [...form.elements].forEach(n => n.disabled = busy || !loaded || ctx?.ready === false || !ctx?.students.includes(ctx.name));
     start.disabled ||= !present; position.disabled ||= !present;
@@ -149,8 +158,8 @@ window.Khatma = (() => {
     form.hidden = ctx.role !== 'student';
     studentName.value = ctx.name || '';
     sessionDate.max = KhatmaModel.today(); if (!sessionDate.value) sessionDate.value = sessionDate.max;
-    const oldTeacher = teacher.value; teacher.replaceChildren(new Option('اختر الشيخ', ''), ...KhatmaModel.teacherList(data).map(n => new Option(n,n))); teacher.value = oldTeacher;
-    const oldReading = riwaya.value; riwaya.replaceChildren(new Option('اختر الرواية أو القراءة',''), ...KhatmaModel.readingList(data).map(n => new Option(n,n))); riwaya.value = oldReading;
+    const oldTeacher = teacher.value; teacher.replaceChildren(new Option('اختر الشيخ', ''), ...KhatmaModel.teacherList(data).map(n => new Option(n,n))); if(editing&&oldTeacher&&!KhatmaModel.teacherList(data).includes(oldTeacher))teacher.add(new Option(oldTeacher,oldTeacher));teacher.value = oldTeacher;
+    const oldReading = riwaya.value; riwaya.replaceChildren(new Option('اختر الرواية أو القراءة',''), ...KhatmaModel.readingList(data).map(n => new Option(n,n))); if(editing&&oldReading&&!KhatmaModel.readingList(data).includes(oldReading))riwaya.add(new Option(oldReading,oldReading));riwaya.value = oldReading;
     if (!teacherDirty) { teacherEditor.value = KhatmaModel.teacherList(data).join('\n'); readingEditor.value = KhatmaModel.readingList(data).join('\n'); }
     updateFields();
     // Include empty intervening weeks so a missing report remains visible.
@@ -212,14 +221,40 @@ window.Khatma = (() => {
     if (!entries.length) { report.append(el('p', 'لا توجد تسجيلات بعد. اختر الشيخ والقراءة ثم سجّل متابعتك.')); return; }
     const cards = el('div', '', 'khatma-cards'); latest.forEach(e => { const progress = KhatmaModel.latest(data, name, null, true).find(p => p.khatmaId === e.khatmaId); const card = el('article', entryLabel(e), 'khatma-card'); if (!e.position && progress) card.append(el('p', `آخر موضع: ${progress.position}`)); cards.append(card); }); report.append(cards);
     report.append(el('h3', 'جميع التسجيلات — كل الأسابيع'));
-    const body = table(['التاريخ', 'الأسبوع', 'الختمة', 'اسم الشيخ', 'الرواية أو القراءة', 'الحضور', 'بداية القراءة', 'نهاية القراءة', 'ملاحظات الشيخ(ة)'], 'khatma-history');
+    const body = table([...(ctx.role==='student'?['إدارة التسجيل']:[]),'التاريخ', 'الأسبوع', 'الختمة', 'اسم الشيخ', 'الرواية أو القراءة', 'الحضور', 'بداية القراءة', 'نهاية القراءة', 'ملاحظات الشيخ(ة)'], 'khatma-history');
     entries.forEach(e => {
       const k = data.khatmas[e.khatmaId], row = el('tr');
       [e.date, e.weekId, k?.title || '', e.teacher, e.riwaya, KhatmaModel.attendance[e.attendance], e.start || '—', e.position || '—', e.notes || '—'].forEach(t => row.append(el('td', t)));
+      if(ctx.role==='student'){
+        const actions=el('td');const edit=button('تعديل',()=>{
+          if(busy)return;editing=structuredClone(e);pending=null;
+          for(const [control,value]of [[teacher,e.teacher],[riwaya,e.riwaya]]){if(![...control.options].some(o=>o.value===value))control.add(new Option(value,value));control.value=value;}
+          sessionDate.value=e.date;attendance.value=e.attendance;start.value=e.start||'';position.value=e.position||'';notes.value=e.notes||'';
+          updateFields();result.textContent='عدّل البيانات ثم اضغط حفظ التعديل.';form.scrollIntoView({block:'start',behavior:'smooth'});
+        });edit.setAttribute('aria-label',`تعديل التسجيل ${e.date} ${e.teacher}`);
+        const remove=button('حذف',()=>deleteEntry(e));remove.setAttribute('aria-label',`حذف التسجيل ${e.date} ${e.teacher}`);
+        edit.disabled=remove.disabled=busy||!loaded||ctx.ready===false;actions.append(edit,remove);row.prepend(actions);
+      }
       body.append(row);
     });
   }
+  async function deleteEntry(entry){
+    if(busy||!loaded||ctx?.ready===false)return;
+    if(!confirm(`حذف تسجيل ${entry.date} مع ${entry.teacher} — ${entry.riwaya}؟`))return;
+    const c=ctx,token=epoch;busy=true;refreshId++;updateFields();result.textContent='جار الحذف...';
+    try{
+      const snapshot=await read(c);if(token!==epoch)return;
+      const value=KhatmaModel.removeEntry(snapshot.value,entry.id,{role:c.role,name:c.name},c.students,entry);
+      await c.prepare?.();if(token!==epoch)return;const url=remote(c);
+      if(url&&!snapshot.etag)throw Error('تعذر تأمين الحذف.');
+      const response=await fetch(url||`/api/khatma/${encodeURIComponent(c.storageId)}`,{method:'PUT',headers:{'Content-Type':'application/json',...(url?{'if-match':snapshot.etag}:{})},body:JSON.stringify(url?{...value,settings:null}:{value:{...value,settings:null},revision:snapshot.revision})});
+      if([409,412].includes(response.status))throw Error('تغيرت البيانات أثناء الحذف. حدّث السجل وأعد المحاولة.');
+      if(!response.ok)throw Error('تعذر حذف التسجيل. أعد المحاولة.');
+      if(token!==epoch)return;data=value;if(editing?.id===entry.id){editing=null;pending=null;form.reset();}draw();result.textContent='تم حذف التسجيل.';
+      window.dispatchEvent(new CustomEvent('shatibiyya:activity-saved',{detail:{storageId:c.storageId}}));
+    }catch(e){if(token===epoch)result.textContent=e.message;}finally{busy=false;if(ctx){updateFields();drawReport();}}
+  }
   setInterval(() => { if (ctx && !panel.hidden && !busy) refresh(); }, 30000);
   window.addEventListener('focus', () => { if (ctx && !panel.hidden) refresh(); });
-  return { mount, logout() { epoch++; refreshId++; ctx = null; key = ''; data = {}; loaded = false; pending = null; form?.reset(); if (panel) panel.hidden = true; } };
+  return { mount, logout() { epoch++; refreshId++; ctx = null; key = ''; data = {}; loaded = false; pending = null; editing=null; form?.reset(); if (panel) panel.hidden = true; } };
 })();
